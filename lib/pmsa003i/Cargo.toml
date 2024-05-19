@@ -1,0 +1,20 @@
+[package]
+name = "pmsa003i"
+version = "0.1.0"
+edition = "2021"
+readme = "README.md"
+license = "MIT"
+
+[dependencies]
+embedded-hal = { workspace = true, optional = true }
+embedded-hal-async = { workspace = true, optional = true }
+
+[features]
+std = []
+fmt = []
+default = ["std", "fmt"]
+no_panic = []
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

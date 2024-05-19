@@ -1,0 +1,19 @@
+[package]
+name = "eclss"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+serde = ["dep:serde", "tinymetrics/serde"]
+default = ["pmsa003i"]
+
+[dependencies]
+embedded-hal-async = { workspace = true }
+embedded-hal = { workspace = true }
+maitake-sync = { workspace = true }
+tinymetrics = { workspace = true, default-features = false }
+serde = { workspace = true, optional = true }
+tracing = { workspace = true, optional = true, default-features = false, features = ["attributes"] }
+pmsa003i = { workspace = true, optional = true, features = ["embedded-hal-async"] }
