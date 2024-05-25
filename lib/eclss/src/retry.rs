@@ -1,23 +1,21 @@
-use core::sync::atomic::{AtomicU32, Ordering};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use core::time::Duration;
-use std::marker::PhantomData;
 
 use embedded_hal_async::delay::DelayNs;
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
 pub struct ExpBackoff {
-    max: Duration,
-    initial: Duration,
-    exp: AtomicU32,
-    target: &'static str,
+    max_ms: usize,
+    initial_ms: usize,
+    exp: AtomicUsize,
 }
 
-pub struct Retry<E, F = fn(&E) -> bool> {
-    max_retries: usize,
-    should_retry: F,
-    target: &'static str,
-    _error: PhantomData<fn(E)>,
-}
+// pub struct Retry<E, F = fn(&E) -> bool> {
+//     max_retries: usize,
+//     should_retry: F,
+//     target: &'static str,
+//     _error: PhantomData<fn(E)>,
+// }
 
 // === impl ExpBackoff ===
 
@@ -26,37 +24,28 @@ impl ExpBackoff {
 
     pub const fn new(initial: Duration) -> Self {
         Self {
-            max: Self::DEFAULT_MAX_BACKOFF,
-            initial,
-            exp: AtomicU32::new(0),
-            target: "retry",
+            max_ms: Self::DEFAULT_MAX_BACKOFF.as_millis() as usize,
+            initial_ms: initial.as_millis() as usize,
+            exp: AtomicUsize::new(0),
         }
     }
 
     pub const fn with_max(self, max: Duration) -> Self {
-        Self { max, ..self }
-    }
-
-    pub const fn with_target(self, target: &'static str) -> Self {
-        Self { target, ..self }
+        Self {
+            max_ms: max.as_millis() as usize,
+            ..self
+        }
     }
 
     pub async fn wait(&self, delay: &mut impl DelayNs) {
         // log::debug!(target: self.target, "backing off for {}...", self.current);
-        let current = self.initial * self.exp.load(Ordering::Acquire);
+        let current = self.initial_ms * self.exp.load(Ordering::Acquire);
 
-        if current < self.max {
+        if current < self.max_ms {
             self.exp.fetch_add(1, Ordering::Relaxed);
         }
 
-        if let Ok(ns) = u32::try_from(current.as_nanos()) {
-            delay.delay_ns(ns).await;
-        } else if let Ok(us) = u32::try_from(current.as_micros()) {
-            delay.delay_us(us).await;
-        } else {
-            let ms = u32::try_from(current.as_millis()).unwrap_or(u32::MAX);
-            delay.delay_ms(ms).await;
-        }
+        delay.delay_ms(current as u32).await;
     }
 
     pub fn reset(&self) {
@@ -65,6 +54,35 @@ impl ExpBackoff {
     }
 
     pub fn current(&self) -> Duration {
-        self.initial * self.exp.load(Ordering::Acquire)
+        Duration::from_millis(self.current_ms() as u64)
+    }
+
+    fn current_ms(&self) -> usize {
+        self.initial_ms * self.exp.load(Ordering::Acquire)
+    }
+}
+
+impl Default for ExpBackoff {
+    fn default() -> Self {
+        Self::new(Duration::from_secs(1))
+    }
+}
+
+impl From<Duration> for ExpBackoff {
+    fn from(initial: Duration) -> Self {
+        Self::new(initial)
+    }
+}
+
+impl Clone for ExpBackoff {
+    fn clone(&self) -> Self {
+        let Self {
+            max_ms, initial_ms, ..
+        } = *self;
+        Self {
+            max_ms,
+            initial_ms,
+            exp: AtomicUsize::new(0),
+        }
     }
 }

@@ -7,13 +7,13 @@ mod trace;
 
 pub use self::metrics::SensorMetrics;
 pub mod metrics;
-pub(crate) mod retry;
+pub mod retry;
 pub mod sensor;
 
 pub struct Eclss<I, const SENSORS: usize> {
-    metrics: SensorMetrics,
-    i2c: SharedBus<I>,
-    sensors: sensor::Registry<SENSORS>,
+    pub(crate) metrics: SensorMetrics,
+    pub(crate) i2c: SharedBus<I>,
+    pub(crate) sensors: sensor::Registry<SENSORS>,
 }
 
 impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {

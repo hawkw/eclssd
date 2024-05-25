@@ -104,6 +104,12 @@ impl SensorMetrics {
     }
 }
 
+impl Default for SensorMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl fmt::Display for SensorMetrics {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.fmt_metrics(f)

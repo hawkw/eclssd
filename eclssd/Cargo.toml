@@ -11,6 +11,7 @@ clap = { workspace = true, features = ["derive"] }
 eclss = { workspace = true, features = ["pmsa003i", "tracing", "serde"] }
 embedded-hal = { workspace = true }
 embedded-hal-async = { workspace = true }
+humantime = { workspace = true }
 linux-embedded-hal = { workspace = true, features = ["i2c", "async-tokio"] }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }

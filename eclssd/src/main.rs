@@ -1,15 +1,22 @@
 use anyhow::Context;
 use clap::Parser;
+use eclss::sensor;
 use embedded_hal::i2c::{self, I2c as BlockingI2c};
 use embedded_hal_async::i2c::I2c;
 use linux_embedded_hal::I2cdev;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::time::Duration;
 
 #[derive(Debug, Parser)]
 struct Args {
     #[clap(short, long, default_value = "/dev/i2c-1")]
     i2cdev: PathBuf,
+
+    #[clap(long, default_value = "500ms")]
+    initial_backoff: humantime::Duration,
+
+    #[clap(long, default_value = "60s")]
+    max_backoff: humantime::Duration,
 }
 
 #[tokio::main]
@@ -21,17 +28,36 @@ async fn main() -> anyhow::Result<()> {
         .with_context(|| format!("failed to open I2C device {}", args.i2cdev.display()))?;
     let eclss: &'static eclss::Eclss<_, 16> =
         Box::leak::<'static>(Box::new(eclss::Eclss::<_, 16>::new(AsyncI2c(dev))));
-    tokio::spawn(async move {
-        tracing::info!("starting PMSA003i...");
-        eclss
-            .run_sensor::<eclss::sensor::pmsa003i::Pmsa003i<AsyncI2c<I2cdev>>>(
-                std::time::Duration::from_millis(500),
-                &mut linux_embedded_hal::Delay,
-            )
-            .await
-            .unwrap()
-    })
-    .await?;
+    let backoff = eclss::retry::ExpBackoff::new(args.initial_backoff.into())
+        .with_max(args.max_backoff.into());
+    let mut sensors = tokio::task::JoinSet::new();
+    sensors.spawn({
+        let sensor = sensor::Pmsa003i::new(eclss);
+        let backoff = backoff.clone();
+        async move {
+            tracing::info!("starting PMSA003I...");
+            eclss
+                .run_sensor(sensor, backoff, linux_embedded_hal::Delay)
+                .await
+                .unwrap()
+        }
+    });
+    sensors.spawn({
+        let sensor = sensor::Scd40::new(eclss, linux_embedded_hal::Delay);
+
+        let backoff = backoff.clone();
+        async move {
+            tracing::info!("starting PMSA003I...");
+            eclss
+                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
+                .await
+                .unwrap()
+        }
+    });
+
+    while let Some(join) = sensors.join_next().await {
+        join.unwrap();
+    }
 
     Ok(())
 }
