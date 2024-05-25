@@ -1,11 +1,11 @@
 use anyhow::Context;
 use clap::Parser;
-use eclss::sensor;
+use eclss::sensor::{self};
 use embedded_hal::i2c::{self, I2c as BlockingI2c};
 use embedded_hal_async::i2c::I2c;
 use linux_embedded_hal::I2cdev;
 use std::path::PathBuf;
-use std::time::Duration;
+use tracing_subscriber::prelude::*;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -17,12 +17,18 @@ struct Args {
 
     #[clap(long, default_value = "60s")]
     max_backoff: humantime::Duration,
+
+    #[clap(env = "ECLSS_LOG", long = "log", default_value = "info")]
+    trace_filter: tracing_subscriber::filter::Targets,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(args.trace_filter)
+        .init();
 
     let dev = I2cdev::new(&args.i2cdev)
         .with_context(|| format!("failed to open I2C device {}", args.i2cdev.display()))?;
@@ -43,11 +49,11 @@ async fn main() -> anyhow::Result<()> {
         }
     });
     sensors.spawn({
-        let sensor = sensor::Scd40::new(eclss, linux_embedded_hal::Delay);
+        let sensor = sensor::Scd4x::new(eclss, linux_embedded_hal::Delay);
 
         let backoff = backoff.clone();
         async move {
-            tracing::info!("starting PMSA003I...");
+            tracing::info!("starting SCD4x...");
             eclss
                 .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
                 .await
