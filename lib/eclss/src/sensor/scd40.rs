@@ -11,14 +11,14 @@ use embedded_hal::i2c;
 use embedded_hal_async::delay::DelayNs as AsyncDelayNs;
 use embedded_hal_async::i2c::I2c;
 
-pub struct Scd40<I: 'static, D> {
+pub struct Scd4x<I: 'static, D> {
     sensor: AsyncScd4x<&'static SharedBus<I>, AsyncBlockingDelayNs<D>>,
     temp_c: &'static Gauge,
     rel_humidity: &'static Gauge,
     co2_ppm: &'static Gauge,
 }
 
-impl<I, D> Scd40<I, D>
+impl<I, D> Scd4x<I, D>
 where
     I: I2c<i2c::SevenBitAddress>,
     D: BlockingDelayNs,
@@ -48,9 +48,12 @@ impl<D: BlockingDelayNs> AsyncDelayNs for AsyncBlockingDelayNs<D> {
     }
 }
 
+#[cfg(feature = "scd41")]
+const NAME: &str = "SCD40";
+#[cfg(not(feature = "scd41"))]
 const NAME: &str = "SCD40";
 
-impl<I, D> Sensor for Scd40<I, D>
+impl<I, D> Sensor for Scd4x<I, D>
 where
     I: I2c + 'static,
     D: BlockingDelayNs,
@@ -60,11 +63,17 @@ where
     type Error = Error<I::Error>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
+        #[cfg(feature = "scd41")]
+        self.sensor.wake_up().await;
+
         self.sensor.stop_periodic_measurement().await?;
         self.sensor.reinit().await?;
 
         let serial = self.sensor.serial_number().await?;
-        info!(serial, "Connected to SCD40");
+        info!(serial, "Connected to {NAME} sensor");
+
+        self.sensor.start_periodic_measurement().await?;
+
         Ok(())
     }
 

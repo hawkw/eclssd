@@ -11,11 +11,11 @@ pub mod pmsa003i;
 #[cfg(feature = "pmsa003i")]
 pub use pmsa003i::Pmsa003i;
 
-#[cfg(feature = "scd40")]
+#[cfg(any(feature = "scd40", feature = "scd41"))]
 pub mod scd40;
 
-#[cfg(feature = "scd40")]
-pub use scd40::Scd40;
+#[cfg(any(feature = "scd40", feature = "scd41"))]
+pub use scd40::Scd4x;
 
 pub use self::status::{Status, StatusCell};
 
@@ -98,6 +98,7 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
         info!("initialized {}", S::NAME);
 
         loop {
+            delay.delay_ms(poll_interval.as_millis() as u32).await;
             while let Err(error) = sensor.poll().await {
                 warn!(
                     %error,
@@ -109,7 +110,6 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
                 backoff.wait(&mut delay).await;
             }
             status.set_status(Status::Up);
-            delay.delay_ms(poll_interval.as_millis() as u32).await;
         }
     }
 }
@@ -124,6 +124,7 @@ pub(crate) struct State {
     #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_atomic_bool"))]
     found: AtomicBool,
     poll_interval: Duration,
+    #[cfg_attr(feature = "serde", serde(skip))]
     backoff: crate::retry::ExpBackoff,
 }
 

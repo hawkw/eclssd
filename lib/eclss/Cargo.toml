@@ -8,6 +8,7 @@ edition = "2021"
 [features]
 serde = ["dep:serde", "tinymetrics/serde"]
 scd40 = ["dep:scd4x"]
+scd41 = ["dep:scd4x", "scd4x/scd41"]
 default = ["pmsa003i", "scd40"]
 
 [dependencies]
