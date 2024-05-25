@@ -132,9 +132,10 @@ impl Reading {
             return Err(ReadingError::BadMagic(magic));
         }
 
-        if words![29] != 0 {
+        let err = bytes[29];
+        if err != 0 {
             // byte 29 is an error code
-            return Err(ReadingError::ErrorCode(bytes[27]));
+            return Err(ReadingError::ErrorCode(err));
         }
 
         // last two bytes are the checksum so dont include them in the checksum.
