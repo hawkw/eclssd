@@ -3,7 +3,7 @@ use core::time::Duration;
 
 use embedded_hal_async::delay::DelayNs;
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
+#[derive(Debug)]
 pub struct ExpBackoff {
     max_ms: usize,
     initial_ms: usize,

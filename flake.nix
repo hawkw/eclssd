@@ -43,7 +43,7 @@
             rustc = rustToolchain;
           };
 
-          src = ./.;
+          src = nix-gitignore.gitignoreSource [ ] ./.;
           cargoTOML = lib.importTOML "${src}/eclssd/Cargo.toml";
         in
         configuredRustPlatform.buildRustPackage {
@@ -73,6 +73,7 @@
           build-eclssd pkgsCross.armv7l-hf-multiplatform;
         eclssd-cross-aarch64-linux =
           build-eclssd pkgsCross.aarch64-multiplatform;
+        eclssd-cross-pi = build-eclssd pkgsCross.raspberryPi;
       });
 
       ########################################################################
@@ -83,13 +84,16 @@
           default = with flakePkgs; mkShell {
             buildInputs = [
               eclssd.buildInputs
-              eclssd-cross-armv7l-linux.buildInputs
-              eclssd-cross-aarch64-linux.buildInputs
+              patchelf
+              # eclssd-cross-armv7l-linux.buildInputs
+              # eclssd-cross-aarch64-linux.buildInputs
+              # eclssd-cross-pi.buildInputs
             ];
             nativeBuildInputs = [
               eclssd.nativeBuildInputs
-              eclssd-cross-armv7l-linux.nativeBuildInputs
-              eclssd-cross-aarch64-linux.nativeBuildInputs
+              # eclssd-cross-armv7l-linux.nativeBuildInputs
+              # eclssd-cross-aarch64-linux.nativeBuildInputs
+              # eclssd-cross-pi.nativeBuildInputs
             ];
           };
         });

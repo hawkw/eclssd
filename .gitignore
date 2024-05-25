@@ -1,2 +1,4 @@
 /target
+# from `nix build`
+/result
 .direnv
