@@ -67,7 +67,7 @@
       ########################################################################
       packages = forAllSystems (pkgs: with pkgs; {
         eclssd = build-eclssd pkgs;
-        default = self.packages.${system}.humility;
+        default = self.packages.${system}.eclssd;
 
         eclssd-cross-armv7l-linux =
           build-eclssd pkgsCross.armv7l-hf-multiplatform;
@@ -98,6 +98,61 @@
           };
         });
 
+      nixosModules.default = { config, lib, pkgs, ... }: with lib; let
+        cfg = config.services.eclssd;
+      in
+      {
+        options.services.eclssd = with types; {
+          enable = mkEnableOption "eclssd";
+          logFilter = mkOption {
+            type = separatedString ",";
+            default = "info";
+            example = "info,eclss=debug";
+            description = "`tracing-subscriber` log filtering configuration for eclssd";
+          };
+          i2cdev = mkOption {
+            type = path;
+            default = "/dev/i2c-1";
+            example = "/dev/i2c-1";
+            description = "The I2C device to use for communication with sensors.";
+          };
+          server = {
+            addr = mkOption {
+              type = uniq str;
+              default = "127.0.0.1";
+              example = "127.0.0.1";
+              description = "The address to bind the server on.";
+            };
 
+            port = mkOption {
+              type = uniq port;
+              default = 4200;
+              example = 4200;
+              description = "The port to bind the server on.";
+            };
+          };
+        };
+
+        config = mkIf cfg.enable {
+          systemd.services.eclssd = {
+            description = "Environmental Controls and Life Support Systems daemon";
+            wantedBy = [ "multi-user.target" ];
+            after = [ "networking.target" ];
+            environment = {
+              ECLSS_LOG = cfg.logFilter;
+            };
+            serviceConfig = {
+              ExecStart = ''
+                ${self.packages.${pkgs.system}.default}/bin/eclssd \
+                  --i2cdev ${cfg.i2cdev} \
+                  --listen-addr "${cfg.server.addr}:${toString cfg.server.port}"
+              '';
+              Restart = "on-failure";
+              RestartSec = "5s";
+              DynamicUser = lib.mkDefault true;
+            };
+          };
+        };
+      };
     };
 }
