@@ -24,6 +24,14 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
             sensors: sensor::Registry::new(),
         }
     }
+
+    pub fn sensors(&self) -> &sensor::Registry<SENSORS> {
+        &self.sensors
+    }
+
+    pub fn metrics(&self) -> &SensorMetrics {
+        &self.metrics
+    }
 }
 
 #[derive(Debug)]

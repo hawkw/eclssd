@@ -20,6 +20,9 @@ struct Args {
 
     #[clap(env = "ECLSS_LOG", long = "log", default_value = "info")]
     trace_filter: tracing_subscriber::filter::Targets,
+
+    #[clap(short, long, default_value = "127.0.0.1:4200")]
+    listen_addr: std::net::SocketAddr,
 }
 
 #[tokio::main]
@@ -36,6 +39,15 @@ async fn main() -> anyhow::Result<()> {
         Box::leak::<'static>(Box::new(eclss::Eclss::<_, 16>::new(AsyncI2c(dev))));
     let backoff = eclss::retry::ExpBackoff::new(args.initial_backoff.into())
         .with_max(args.max_backoff.into());
+
+    let listener = tokio::net::TcpListener::bind(args.listen_addr).await?;
+    tracing::info!("listening on {}", args.listen_addr);
+    let server = tokio::spawn(async move {
+        eclss_axum::axum::serve(listener, eclss_axum::app(eclss))
+            .await
+            .unwrap();
+    });
+
     let mut sensors = tokio::task::JoinSet::new();
     sensors.spawn({
         let sensor = sensor::Pmsa003i::new(eclss);
@@ -64,6 +76,8 @@ async fn main() -> anyhow::Result<()> {
     while let Some(join) = sensors.join_next().await {
         join.unwrap();
     }
+
+    server.await.unwrap();
 
     Ok(())
 }

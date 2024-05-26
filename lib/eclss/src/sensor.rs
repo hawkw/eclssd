@@ -114,11 +114,11 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
     }
 }
 
-pub(crate) type Registry<const N: usize> = RegistryMap<&'static str, State, { N }>;
+pub type Registry<const N: usize> = RegistryMap<&'static str, State, { N }>;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub(crate) struct State {
+pub struct State {
     status: StatusCell,
 
     #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_atomic_bool"))]

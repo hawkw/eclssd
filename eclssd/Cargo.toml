@@ -11,11 +11,11 @@ scd41 = ["eclss/scd41"]
 scd40 = ["eclss/scd40"]
 pmsa003i = ["eclss/pmsa003i"]
 
-
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 eclss = { workspace = true, features = ["tracing", "serde"] }
+eclss-axum = { workspace = true }
 embedded-hal = { workspace = true }
 embedded-hal-async = { workspace = true }
 humantime = { workspace = true }

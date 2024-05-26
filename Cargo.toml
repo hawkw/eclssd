@@ -11,6 +11,8 @@ axum = "0.7.5"
 clap = "4.0"
 eclss = { path = "lib/eclss" }
 eclss-api = { path = "lib/eclss-api" }
+eclss-axum = { path = "lib/eclss-axum" }
+ens160 = { version = "0.6.1", default-features = false }
 embedded-hal = { version = "1" }
 embedded-hal-async = { version = "1" }
 heapless = "0.8"
