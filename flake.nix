@@ -1,15 +1,19 @@
 {
-  description = "debugger for Hubris";
+  description = "Environmental Controls and Life Support Systems";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-23.11";
+    flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-utils.follows = "flake-utils";
+      };
     };
   };
 
-  outputs = { self, nixpkgs, rust-overlay }:
+  outputs = { self, nixpkgs, rust-overlay, ... }:
     let
       systems = [ "x86_64-linux" "aarch64-linux" "armv7l-linux" "x86_64-darwin" "aarch64-darwin" ];
       overlays = [ (import rust-overlay) ];
@@ -100,26 +104,37 @@
 
       nixosModules.default = { config, lib, pkgs, ... }: with lib; let
         cfg = config.services.eclssd;
+        name = "eclssd";
+        description = "Environmental Controls and Life Support Systems daemon";
       in
       {
         options.services.eclssd = with types; {
-          enable = mkEnableOption "eclssd";
+          enable = mkEnableOption name;
+
           logFilter = mkOption {
             type = separatedString ",";
             default = "info";
             example = "info,eclss=debug";
             description = "`tracing-subscriber` log filtering configuration for eclssd";
           };
+
           i2cdev = mkOption {
             type = path;
             default = "/dev/i2c-1";
             example = "/dev/i2c-1";
             description = "The I2C device to use for communication with sensors.";
           };
+
+          openPorts = mkOption {
+            type = bool;
+            default = false;
+            description = "Whether to open firewall ports for eclssd";
+          };
+
           server = {
             addr = mkOption {
               type = uniq str;
-              default = "127.0.0.1";
+              default = "0.0.0.0";
               example = "127.0.0.1";
               description = "The address to bind the server on.";
             };
@@ -133,26 +148,45 @@
           };
         };
 
-        config = mkIf cfg.enable {
-          systemd.services.eclssd = {
-            description = "Environmental Controls and Life Support Systems daemon";
-            wantedBy = [ "multi-user.target" ];
-            after = [ "networking.target" ];
-            environment = {
-              ECLSS_LOG = cfg.logFilter;
+        config = mkIf cfg.enable (mkMerge [
+          {
+            # eclssd user/group. the service requires its own user in order to
+            # add the "i2c" group.
+            users = {
+              users.${name} = {
+                inherit description;
+                isSystemUser = true;
+                group = name;
+                extraGroups = [ "i2c" ];
+              };
+              groups.${name} = { };
             };
-            serviceConfig = {
-              ExecStart = ''
-                ${self.packages.${pkgs.system}.default}/bin/eclssd \
-                  --i2cdev ${cfg.i2cdev} \
-                  --listen-addr "${cfg.server.addr}:${toString cfg.server.port}"
-              '';
-              Restart = "on-failure";
-              RestartSec = "5s";
-              DynamicUser = lib.mkDefault true;
+
+            systemd.services.${name} = {
+              inherit description;
+              wantedBy = [ "multi-user.target" ];
+              after = [ "networking.target" ];
+              environment = {
+                ECLSS_LOG = cfg.logFilter;
+              };
+              path = [ self.packages.${pkgs.system}.default ];
+              serviceConfig = {
+                User = name;
+                Group = name;
+                ExecStart = ''
+                  eclssd \
+                    --i2cdev ${cfg.i2cdev} \
+                    --listen-addr "${cfg.server.addr}:${toString cfg.server.port}"
+                '';
+                Restart = "on-failure";
+                RestartSec = "5s";
+              };
             };
-          };
-        };
+          }
+          (mkIf cfg.openPorts {
+            networking.firewall.allowedTCPPorts = [ cfg.server.port ];
+          })
+        ]);
       };
     };
 }
