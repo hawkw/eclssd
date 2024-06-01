@@ -22,6 +22,7 @@ tokio = "1.37"
 tinymetrics = { git = "https://github.com/hawkw/tinymetrics", default-features = false }
 tracing = { version = "0.1.40", default-features = false }
 tracing-subscriber = { version = "0.3.18", default-features = false }
+tracing-journald = { version = "0.3" }
 linux-embedded-hal = "0.4.0"
 scd4x = { version = "0.3.0", default-features = false }
 serde = { version = "1.0", default-features = false }

@@ -9,39 +9,73 @@ use tracing_subscriber::prelude::*;
 
 #[derive(Debug, Parser)]
 struct Args {
+    /// Path to the Linux i2cdev I²C device to use to communicate with sensors.
     #[clap(short, long, default_value = "/dev/i2c-1")]
     i2cdev: PathBuf,
 
-    #[clap(long, default_value = "500ms")]
-    initial_backoff: humantime::Duration,
-
-    #[clap(long, default_value = "60s")]
-    max_backoff: humantime::Duration,
-
-    #[clap(env = "ECLSS_LOG", long = "log", default_value = "info")]
-    trace_filter: tracing_subscriber::filter::Targets,
-
     #[clap(short, long, default_value = "127.0.0.1:4200")]
     listen_addr: std::net::SocketAddr,
+
+    #[clap(flatten)]
+    retries: RetryArgs,
+
+    #[clap(flatten)]
+    trace: TraceArgs,
+}
+
+#[derive(Debug, Parser)]
+#[command(next_help_heading = "Sensor Retries")]
+struct RetryArgs {
+    /// initial value for sensor retry backoffs
+    #[clap(long, default_value = "500ms")]
+    initial_backoff: humantime::Duration,
+    /// maximum backoff duration for sensor retries
+    #[clap(long, default_value = "60s")]
+    max_backoff: humantime::Duration,
+}
+
+#[derive(Debug, Parser)]
+#[command(next_help_heading = "Tracing")]
+struct TraceArgs {
+    /// tracing-subscriber filter configuration
+    #[clap(env = "ECLSS_LOG", long = "trace", default_value = "info")]
+    filter: tracing_subscriber::filter::Targets,
+
+    /// trace output format
+    #[clap(
+        env = "ECLSS_LOG_FORMAT",
+        long = "trace-format",
+        default_value = "text"
+    )]
+    format: TraceFormat,
+}
+
+#[derive(clap::ValueEnum, Debug, Clone)]
+#[clap(rename_all = "lower")]
+enum TraceFormat {
+    /// Human-readable text logging format.
+    Text,
+    /// JSON logging format.
+    Json,
+    /// Log to journald, rather than to stdout.
+    Journald,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .with(args.trace_filter)
-        .init();
+    args.trace.trace_init();
 
     let dev = I2cdev::new(&args.i2cdev)
         .with_context(|| format!("failed to open I2C device {}", args.i2cdev.display()))?;
+    tracing::info!(path = "opened I²C device");
+
     let eclss: &'static eclss::Eclss<_, 16> =
         Box::leak::<'static>(Box::new(eclss::Eclss::<_, 16>::new(AsyncI2c(dev))));
-    let backoff = eclss::retry::ExpBackoff::new(args.initial_backoff.into())
-        .with_max(args.max_backoff.into());
+    let backoff = args.retries.backoff();
 
     let listener = tokio::net::TcpListener::bind(args.listen_addr).await?;
-    tracing::info!("listening on {}", args.listen_addr);
+    tracing::info!(listen_addr = ?args.listen_addr, "listening...");
     let server = tokio::spawn(async move {
         eclss_axum::axum::serve(listener, eclss_axum::app(eclss))
             .await
@@ -80,6 +114,56 @@ async fn main() -> anyhow::Result<()> {
     server.await.unwrap();
 
     Ok(())
+}
+
+impl RetryArgs {
+    fn backoff(&self) -> eclss::retry::ExpBackoff {
+        let &Self {
+            initial_backoff,
+            max_backoff,
+        } = self;
+        tracing::info!(
+            %initial_backoff,
+            %max_backoff,
+            "configuring sensor retries...",
+        );
+        eclss::retry::ExpBackoff::new(initial_backoff.into()).with_max(max_backoff.into())
+    }
+}
+
+impl TraceArgs {
+    fn trace_init(&self) {
+        let registry = tracing_subscriber::registry().with(self.filter.clone());
+        match self.format {
+            #[cfg(target_os = "linux")]
+            TraceFormat::Journald => match tracing_journald::Layer::new() {
+                Ok(journald) => {
+                    registry.with(journald).init();
+                    return;
+                }
+                Err(err) => {
+                    eprintln!("failed to connect to journald, falling back to text format: {err}");
+                }
+            },
+            #[cfg(not(target_os = "linux"))]
+            TraceFormat::Journald => {
+                eprintln!(
+                    "journald format is only supported on Linux, falling back to text format"
+                );
+            }
+            TraceFormat::Json => {
+                registry
+                    .with(tracing_subscriber::fmt::layer().json())
+                    .init();
+                return;
+            }
+            TraceFormat::Text => {
+                // do nothing, as we also want to fall through to the text
+                // format if journald init fails.
+            }
+        }
+        registry.with(tracing_subscriber::fmt::layer()).init();
+    }
 }
 
 struct AsyncI2c<I>(I);
