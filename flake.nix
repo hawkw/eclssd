@@ -162,6 +162,10 @@
               groups.${name} = { };
             };
 
+            services.udev.extraRules = ''
+              SUBSYSTEM=="i2c-dev", TAG+="systemd"
+            '';
+
             systemd.services.${name} = {
               inherit description;
               wantedBy = [ "multi-user.target" ];
@@ -180,6 +184,10 @@
                 '';
                 Restart = "on-failure";
                 RestartSec = "5s";
+                PrivateTmp = true;
+                ProtectSystem = true;
+                ProtectHome = true;
+                ProtectKernelTunables = true;
               };
             };
           }
