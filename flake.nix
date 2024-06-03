@@ -174,23 +174,31 @@
                 environment = {
                   ECLSS_LOG = cfg.logFilter;
                 };
-                path = [ self.packages.${pkgs.system}.default ];
                 serviceConfig = {
                   User = name;
                   Group = name;
-                  ExecStart = ''
-                    eclssd \
-                      --i2cdev "${cfg.i2cdev}" \
-                      --listen-addr "${cfg.server.addr}:${toString cfg.server.port}"
+                  ExecStart = ''${self.packages.${pkgs.system}.default}/bin/eclssd \
+                    --i2cdev '${cfg.i2cdev}' \
+                    --listen-addr '${cfg.server.addr}:${toString cfg.server.port}'
                   '';
                   Restart = "on-failure";
                   RestartSec = "5s";
-
+                  # only start if the I2C adapter is up.
                   ConditionPathExists = "/sys/class/i2c-adapter";
-                  # PrivateTmp = true;
-                  # ProtectSystem = true;
-                  # ProtectHome = true;
-                  # ProtectKernelTunables = true;
+                  # Ensure that the "API VFS" (i.e. /dev/i2c-n) is mounted for
+                  # the service.
+                  MountAPIVFS = true;
+                  # Ensure the system has access to real hardware devices in
+                  # /dev
+                  PrivateDevices = false;
+                  # Ensure the service has access to the network so that it can
+                  # bind its listener.
+                  PrivateNetwork = false;
+                  # Misc hardening --- eclssd shouldn't need any filesystem
+                  # access other than `/dev/i2c-*`.
+                  PrivateTmp = true;
+                  ProtectSystem = "strict";
+                  ProtectHome = true;
                 };
               };
           }
