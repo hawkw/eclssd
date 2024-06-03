@@ -166,30 +166,33 @@
               SUBSYSTEM=="i2c-dev", TAG+="systemd"
             '';
 
-            systemd.services.${name} = {
-              inherit description;
-              wantedBy = [ "multi-user.target" ];
-              after = [ "networking.target" ];
-              environment = {
-                ECLSS_LOG = cfg.logFilter;
+            systemd.services.${name} =
+              {
+                inherit description;
+                wantedBy = [ "multi-user.target" ];
+                after = [ "networking.target" ];
+                environment = {
+                  ECLSS_LOG = cfg.logFilter;
+                };
+                path = [ self.packages.${pkgs.system}.default ];
+                serviceConfig = {
+                  User = name;
+                  Group = name;
+                  ExecStart = ''
+                    eclssd \
+                      --i2cdev "${cfg.i2cdev}" \
+                      --listen-addr "${cfg.server.addr}:${toString cfg.server.port}"
+                  '';
+                  Restart = "on-failure";
+                  RestartSec = "5s";
+
+                  ConditionPathExists = "/sys/class/i2c-adapter";
+                  # PrivateTmp = true;
+                  # ProtectSystem = true;
+                  # ProtectHome = true;
+                  # ProtectKernelTunables = true;
+                };
               };
-              path = [ self.packages.${pkgs.system}.default ];
-              serviceConfig = {
-                User = name;
-                Group = name;
-                ExecStart = ''
-                  eclssd \
-                    --i2cdev ${cfg.i2cdev} \
-                    --listen-addr "${cfg.server.addr}:${toString cfg.server.port}"
-                '';
-                Restart = "on-failure";
-                RestartSec = "5s";
-                PrivateTmp = true;
-                ProtectSystem = true;
-                ProtectHome = true;
-                ProtectKernelTunables = true;
-              };
-            };
           }
           (mkIf cfg.openPorts {
             networking.firewall.allowedTCPPorts = [ cfg.server.port ];
