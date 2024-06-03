@@ -131,6 +131,15 @@
             description = "Whether to open firewall ports for eclssd";
           };
 
+          # Currently this doesn't do anything but I intend to use it for my
+          # Prometheus scrape config...
+          location = mkOption {
+            type = uniq str;
+            default = "${config.networking.hostname}";
+            example = "bedroom";
+            description = "The physical location of this ECLSS sensor.";
+          };
+
           server = {
             addr = mkOption {
               type = uniq str;
