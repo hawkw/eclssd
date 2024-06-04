@@ -49,7 +49,7 @@ impl<D: BlockingDelayNs> AsyncDelayNs for AsyncBlockingDelayNs<D> {
 }
 
 #[cfg(feature = "scd41")]
-const NAME: &str = "SCD40";
+const NAME: &str = "SCD41";
 #[cfg(not(feature = "scd41"))]
 const NAME: &str = "SCD40";
 
