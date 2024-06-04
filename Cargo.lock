@@ -1299,7 +1299,7 @@ dependencies = [
 [[package]]
 name = "tinymetrics"
 version = "0.1.0"
-source = "git+https://github.com/hawkw/tinymetrics#209986f8e211a8d53df373ab9830f279772f5ffa"
+source = "git+https://github.com/hawkw/tinymetrics#371cb321f99179d2a26b08a8ab4fd498220dc292"
 dependencies = [
  "portable-atomic",
  "serde",
