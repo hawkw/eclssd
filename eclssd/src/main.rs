@@ -38,7 +38,7 @@ struct RetryArgs {
 #[command(next_help_heading = "Tracing")]
 struct TraceArgs {
     /// tracing-subscriber filter configuration
-    #[clap(env = "ECLSS_LOG", long = "trace", default_value = "info")]
+    #[clap(env = "ECLSS_LOG", long = "trace", default_value = "info,eclss=debug")]
     filter: tracing_subscriber::filter::Targets,
 
     /// trace output format

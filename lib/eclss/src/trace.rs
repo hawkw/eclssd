@@ -1,3 +1,10 @@
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        #[cfg(feature = "tracing")]
+        tracing::debug!($($arg)*)
+    };
+}
+
 macro_rules! info {
     ($($arg:tt)*) => {
         #[cfg(feature = "tracing")]

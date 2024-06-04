@@ -83,7 +83,7 @@ where
             temperature,
             humidity,
         } = self.sensor.measurement().await?;
-        info!("CO2: {co2} ppm, Temp: {temperature}°C, Humidity: {humidity}%");
+        debug!("CO2: {co2} ppm, Temp: {temperature}°C, Humidity: {humidity}%",);
         self.co2_ppm.set_value(co2.into());
         self.temp_c.set_value(temperature.into());
         self.rel_humidity.set_value(humidity.into());
