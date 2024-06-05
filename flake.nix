@@ -60,7 +60,7 @@
               "linux-embedded-hal-0.4.0" = "sha256-2CxZcBMWaGP0DTiyQoDkwVFoNbEBojGySirSb2z+40U=";
               "scd4x-0.3.0" = "sha256-2pbYEDX2454lP2701eyhtRWu1sSW8RSStVt6iOF0fmI=";
               "sensirion-i2c-0.3.0" = "sha256-HS6anAmUBBrhlP/kBSv243ArnK3ULK8+0JA8kpe6LAk=";
-              "tinymetrics-0.1.0" = "sha256-QUEZDLcx20b5S0CEPM9r6IMKRvVNkkylrliEP50cJKs=";
+              "tinymetrics-0.1.0" = "sha256-MIgdTX0xFcyCTSIyCvIuiXj1j8t77ngoRVca23p6hWg==";
             };
           };
         });
