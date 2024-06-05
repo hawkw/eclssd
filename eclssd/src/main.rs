@@ -10,10 +10,16 @@ use tracing_subscriber::prelude::*;
 #[derive(Debug, Parser)]
 struct Args {
     /// Path to the Linux i2cdev I²C device to use to communicate with sensors.
-    #[clap(short, long, default_value = "/dev/i2c-1")]
+    #[clap(short, long, env = "ECLSS_I2C_DEV", default_value = "/dev/i2c-1")]
     i2cdev: PathBuf,
 
-    #[clap(short, long, default_value = "127.0.0.1:4200")]
+    /// Address to bind the HTTP server on.
+    #[clap(
+        short,
+        long,
+        env = "ECLSS_LISTEN_ADDR",
+        default_value = "127.0.0.1:4200"
+    )]
     listen_addr: std::net::SocketAddr,
 
     #[clap(flatten)]
@@ -37,17 +43,29 @@ struct RetryArgs {
 #[derive(Debug, Parser)]
 #[command(next_help_heading = "Tracing")]
 struct TraceArgs {
-    /// tracing-subscriber filter configuration
+    /// Tracing-subscriber filter configuration
     #[clap(env = "ECLSS_LOG", long = "trace", default_value = "info,eclss=debug")]
     filter: tracing_subscriber::filter::Targets,
 
-    /// trace output format
+    /// Trace output format
     #[clap(
         env = "ECLSS_LOG_FORMAT",
         long = "trace-format",
         default_value = "text"
     )]
     format: TraceFormat,
+
+    /// If true, disable timestamps in trace events.
+    ///
+    /// This is intended for use in environments where timestamps are added by
+    /// an external logging system, such as when running as a systemd service or
+    /// in a container runtime.
+    #[clap(long, env = "ECLSS_LOG_NO_TIMESTAMPS")]
+    no_timestamps: bool,
+
+    /// If true, disable ANSI formatting escape codes in tracing output.
+    #[clap(long, env = "NO_COLOR")]
+    no_color: bool,
 }
 
 #[derive(clap::ValueEnum, Debug, Clone)]
@@ -152,9 +170,17 @@ impl TraceArgs {
                 );
             }
             TraceFormat::Json => {
-                registry
-                    .with(tracing_subscriber::fmt::layer().json())
-                    .init();
+                let fmt = tracing_subscriber::fmt::layer()
+                    .json()
+                    .with_current_span(false)
+                    .with_span_list(true)
+                    .flatten_event(true)
+                    .with_thread_ids(true);
+                if self.no_timestamps {
+                    registry.with(fmt.without_time()).init();
+                } else {
+                    registry.with(fmt).init();
+                }
                 return;
             }
             TraceFormat::Text => {
@@ -162,7 +188,14 @@ impl TraceArgs {
                 // format if journald init fails.
             }
         }
-        registry.with(tracing_subscriber::fmt::layer()).init();
+        let fmt = tracing_subscriber::fmt::layer()
+            .with_thread_ids(true)
+            .with_ansi(!self.no_color);
+        if self.no_timestamps {
+            registry.with(fmt.without_time()).init();
+        } else {
+            registry.with(fmt).init();
+        }
     }
 }
 

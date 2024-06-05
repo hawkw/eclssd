@@ -111,13 +111,6 @@
         options.services.eclssd = with types; {
           enable = mkEnableOption name;
 
-          logFilter = mkOption {
-            type = separatedString ",";
-            default = "info";
-            example = "info,eclss=debug";
-            description = "`tracing-subscriber` log filtering configuration for eclssd";
-          };
-
           i2cdev = mkOption {
             type = path;
             default = "/dev/i2c-1";
@@ -138,6 +131,31 @@
             default = "${config.networking.hostname}";
             example = "bedroom";
             description = "The physical location of this ECLSS sensor.";
+          };
+
+          logging = {
+            filter = mkOption {
+              type = separatedString ",";
+              default = "info";
+              example = "info,eclss=debug";
+              description = "`tracing-subscriber` log filtering configuration for eclssd";
+            };
+
+            timestamps = mkEnableOption "timestamps in log output";
+
+            colors = mkOption {
+              type = bool;
+              default = true;
+              example = false;
+              description = "Whether to enable ANSI color codes in log output.";
+            };
+
+            format = mkOption {
+              type = enum [ "text" "json" "journald" ];
+              default = "text";
+              example = "json";
+              description = "The log output format.";
+            };
           };
 
           server = {
@@ -181,12 +199,13 @@
                 wantedBy = [ "multi-user.target" ];
                 after = [ "networking.target" ];
                 environment = {
-                  ECLSS_LOG = cfg.logFilter;
+                  ECLSS_LOG = cfg.logging.filter;
+                  ECLSS_LOG_FORMAT = cfg.logging.format;
                 };
                 serviceConfig = {
                   User = name;
                   Group = name;
-                  ExecStart = ''${self.packages.${pkgs.system}.default}/bin/eclssd \
+                  ExecStart = ''${self.packages.${pkgs.system}.default}/bin/${name} \
                     --i2cdev '${cfg.i2cdev}' \
                     --listen-addr '${cfg.server.addr}:${toString cfg.server.port}'
                   '';
@@ -213,6 +232,16 @@
           }
           (mkIf cfg.openPorts {
             networking.firewall.allowedTCPPorts = [ cfg.server.port ];
+          })
+          (mkIf (!cfg.logging.colors) {
+            systemd.services.${name}.environment = {
+              NOCOLOR = "true";
+            };
+          })
+          (mkIf (!cfg.logging.timestamps) {
+            systemd.services.${name}.environment = {
+              ECLSS_LOG_NO_TIMESTAMPS = "true";
+            };
           })
         ]);
       };
