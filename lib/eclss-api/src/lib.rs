@@ -18,6 +18,9 @@ pub enum SensorStatus {
     /// sensor of this type is not connected to the bus.
     Unknown = 1,
 
+    /// The sensor is initializing.
+    Initializing,
+
     /// I2C address NAKed
     NoAcknowledge,
 
@@ -38,6 +41,7 @@ impl SensorStatus {
     pub fn from_u8(u: u8) -> Self {
         match u {
             u if u == Self::Unknown as u8 => Self::Unknown,
+            u if u == Self::Initializing as u8 => Self::Initializing,
             u if u == Self::NoAcknowledge as u8 => Self::NoAcknowledge,
             u if u == Self::Up as u8 => Self::Up,
             u if u == Self::SensorError as u8 => Self::SensorError,

@@ -80,8 +80,12 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
             .register(metrics::SensorLabel(S::NAME))
             .ok_or("insufficient space in sensor errors metric")?;
 
-        while let Err(error) = sensor.init().await {
+        while let Err(error) = {
+            status.set_status(Status::Initializing);
+            sensor.init().await
+        } {
             warn!(%error, "failed to initialize {}, retrying...", S::NAME);
+            status.set_status(error.as_status());
             errors.fetch_add(1);
             backoff.wait(&mut delay).await;
         }
