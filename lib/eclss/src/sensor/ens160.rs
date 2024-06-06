@@ -7,14 +7,15 @@ use crate::{
 use core::fmt;
 
 use embedded_hal::i2c;
-use embedded_hal_async::i2c::I2c;
+use embedded_hal_async::{delay::DelayNs, i2c::I2c};
 
-pub struct Ens160<I: 'static> {
+pub struct Ens160<I: 'static, D> {
     sensor: ens160::Ens160<&'static SharedBus<I>>,
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
     temp: &'static tinymetrics::GaugeFamily<'static, MAX_METRICS, SensorLabel>,
     rel_humidity: &'static tinymetrics::GaugeFamily<'static, MAX_METRICS, SensorLabel>,
+    delay: D,
 }
 
 #[derive(Debug)]
@@ -26,12 +27,20 @@ pub enum Ens160Error<E> {
 // I2C address of the Adafruit breakout board.
 // TODO(eliza): allow configuring this to support other ENS160 parts...
 const ADAFRUIT_ENS160_ADDR: u8 = 0x53;
+const SECOND_MS: u32 = 1_000;
+// The ENS160 sensor has a 3-minute warmup period when powered on, so we check
+// whether it's still warming up every 30 seconds.
+const WARMUP_DELAY: u32 = 30 * SECOND_MS;
+const INIT_SETUP_DELAY: u32 = 120 * SECOND_MS;
 
-impl<I> Ens160<I>
+impl<I, D> Ens160<I, D>
 where
     I: I2c<i2c::SevenBitAddress>,
 {
-    pub fn new<const SENSORS: usize>(eclss: &'static crate::Eclss<I, { SENSORS }>) -> Self {
+    pub fn new<const SENSORS: usize>(
+        eclss: &'static crate::Eclss<I, { SENSORS }>,
+        delay: D,
+    ) -> Self {
         let metrics = &eclss.metrics;
         const LABEL: SensorLabel = SensorLabel(NAME);
         Self {
@@ -40,16 +49,18 @@ where
             eco2: metrics.eco2.register(LABEL).unwrap(),
             temp: &metrics.temp,
             rel_humidity: &metrics.rel_humidity,
+            delay,
         }
     }
 }
 
 const NAME: &str = "ENS160";
 
-impl<I> Sensor for Ens160<I>
+impl<I, D> Sensor for Ens160<I, D>
 where
     I: I2c + 'static,
     I::Error: core::fmt::Display,
+    D: DelayNs,
 {
     const NAME: &'static str = NAME;
     const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
@@ -78,7 +89,50 @@ where
             .map_err(Ens160Error::I2c)
             .context("error setting ENS160 to operational mode")?;
 
-        Ok(())
+        // The ENS160 sensor has a 3-minute warmup period when powered on, so
+        // wait for it to fully come up before starting to poll it.
+        // In addition, the sensor requires a 1-hour initial startup phase the
+        // first time it's ever powered on.
+        let mut warmup = false;
+        let mut setup = false;
+        loop {
+            let validity = match self.sensor.status().await {
+                Ok(status) => status.validity_flag(),
+                Err(e) if warmup || setup => {
+                    warn!("error reading ENS160 status: {e}");
+                    self.delay.delay_ms(WARMUP_DELAY).await;
+                    continue;
+                }
+                Err(e) => return Err(Ens160Error::I2c(e)).context("error reading ENS160 status"),
+            };
+            match validity {
+                ens160::Validity::NormalOperation => {
+                    info!("ENS160 is ready");
+                    return Ok(());
+                }
+                ens160::Validity::WarmupPhase => {
+                    if !warmup {
+                        info!("ENS160 is warming up...");
+                        warmup = true;
+                    } else {
+                        debug!("ENS160 is still warming up...");
+                    }
+                    self.delay.delay_ms(WARMUP_DELAY).await;
+                }
+                ens160::Validity::InitStartupPhase => {
+                    if !setup {
+                        info!("ENS160 is performing initial setup...");
+                        setup = true;
+                    } else {
+                        debug!("ENS160 is still warming up...");
+                    }
+                    self.delay.delay_ms(INIT_SETUP_DELAY).await;
+                }
+                ens160::Validity::InvalidOutput => {
+                    return Err(Ens160Error::Invalid.into());
+                }
+            }
+        }
     }
 
     async fn poll(&mut self) -> Result<(), Self::Error> {
@@ -119,13 +173,16 @@ where
         match status.validity_flag() {
             // we are in operating mode. read the sensor!
             ens160::Validity::NormalOperation => {}
-            v @ ens160::Validity::WarmupPhase | v @ ens160::Validity::InitStartupPhase => {
-                info!("ENS160 is not ready yet: {v:?}");
-                return Ok(());
-            }
             ens160::Validity::InvalidOutput => {
                 warn!("ENS160 status: invalid output!");
                 return Err(Ens160Error::Invalid.into());
+            }
+            phase => {
+                warn!(
+                    "Unexpected ENS160 setup phase {phase:?}, the sensor \
+                    should already be in operational mode!"
+                );
+                return Ok(());
             }
         }
 
