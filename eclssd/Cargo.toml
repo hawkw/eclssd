@@ -6,10 +6,11 @@ readme = "README.md"
 license = "MIT"
 
 [features]
-default = ["scd41","pmsa003i"]
+default = ["scd41", "pmsa003i", "ens160"]
 scd41 = ["eclss/scd41"]
 scd40 = ["eclss/scd40"]
 pmsa003i = ["eclss/pmsa003i"]
+ens160 = ["eclss/ens160"]
 
 [dependencies]
 anyhow = { workspace = true }

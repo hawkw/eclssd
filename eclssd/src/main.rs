@@ -101,6 +101,7 @@ async fn main() -> anyhow::Result<()> {
     });
 
     let mut sensors = tokio::task::JoinSet::new();
+    #[cfg(feature = "pmsa003i")]
     sensors.spawn({
         let sensor = sensor::Pmsa003i::new(eclss);
         let backoff = backoff.clone();
@@ -112,12 +113,28 @@ async fn main() -> anyhow::Result<()> {
                 .unwrap()
         }
     });
+
+    #[cfg(any(feature = "scd41", feature = "scd40"))]
     sensors.spawn({
         let sensor = sensor::Scd4x::new(eclss, linux_embedded_hal::Delay);
 
         let backoff = backoff.clone();
         async move {
             tracing::info!("starting SCD4x...");
+            eclss
+                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
+                .await
+                .unwrap()
+        }
+    });
+
+    #[cfg(feature = "ens160")]
+    sensors.spawn({
+        let sensor = sensor::Ens160::new(eclss);
+
+        let backoff = backoff.clone();
+        async move {
+            tracing::info!("starting ENS160...");
             eclss
                 .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
                 .await

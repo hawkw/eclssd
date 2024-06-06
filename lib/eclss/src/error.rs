@@ -2,12 +2,6 @@ use crate::sensor;
 use core::fmt;
 use embedded_hal::i2c;
 
-#[derive(Debug)]
-pub struct EclssError<E> {
-    msg: Option<&'static str>,
-    error: E,
-}
-
 pub trait SensorError {
     fn i2c_error(&self) -> Option<i2c::ErrorKind>;
 
@@ -23,6 +17,27 @@ pub trait SensorError {
 
 pub trait Context<T, E> {
     fn context(self, msg: &'static str) -> Result<T, EclssError<E>>;
+}
+
+#[derive(Debug)]
+pub struct EclssError<E> {
+    msg: Option<&'static str>,
+    error: E,
+}
+
+#[derive(Debug)]
+pub struct I2cSensorError<E>(pub(crate) E);
+
+impl<E: i2c::Error> SensorError for I2cSensorError<E> {
+    fn i2c_error(&self) -> Option<i2c::ErrorKind> {
+        Some(self.0.kind())
+    }
+}
+
+impl<E: fmt::Display> fmt::Display for I2cSensorError<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
 }
 
 impl<T, E> Context<T, E> for Result<T, E> {

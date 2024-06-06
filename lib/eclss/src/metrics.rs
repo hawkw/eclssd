@@ -3,7 +3,7 @@ pub use tinymetrics::{Counter, Gauge};
 use std::fmt;
 use tinymetrics::{CounterFamily, FmtLabels, GaugeFamily, MetricBuilder, MetricFamily};
 
-const MAX_METRICS: usize = 4;
+pub(crate) const MAX_METRICS: usize = 4;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]

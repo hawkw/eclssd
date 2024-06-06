@@ -16,6 +16,12 @@ pub mod scd40;
 #[cfg(any(feature = "scd40", feature = "scd41"))]
 pub use scd40::Scd4x;
 
+#[cfg(feature = "ens160")]
+pub mod ens160;
+
+#[cfg(feature = "ens160")]
+pub use self::ens160::Ens160;
+
 pub use self::status::{Status, StatusCell};
 
 use tinymetrics::registry::RegistryMap;
