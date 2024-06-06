@@ -6,6 +6,7 @@ use maitake_sync::Mutex;
 mod trace;
 
 pub use self::metrics::SensorMetrics;
+pub mod error;
 pub mod metrics;
 pub mod retry;
 pub mod sensor;

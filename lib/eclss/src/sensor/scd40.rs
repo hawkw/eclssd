@@ -1,6 +1,7 @@
 use crate::{
+    error::{Context, EclssError, SensorError},
     metrics::{self, Gauge},
-    sensor::{Sensor, SensorError},
+    sensor::Sensor,
     SharedBus,
 };
 use core::fmt;
@@ -38,6 +39,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub struct Error<E>(scd4x::Error<E>);
 
 struct AsyncBlockingDelayNs<D>(D);
@@ -56,23 +58,41 @@ const NAME: &str = "SCD40";
 impl<I, D> Sensor for Scd4x<I, D>
 where
     I: I2c + 'static,
+    I::Error: i2c::Error,
     D: BlockingDelayNs,
 {
     const NAME: &'static str = NAME;
     const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(5);
-    type Error = Error<I::Error>;
+    type Error = EclssError<Error<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
         #[cfg(feature = "scd41")]
         self.sensor.wake_up().await;
 
-        self.sensor.stop_periodic_measurement().await?;
-        self.sensor.reinit().await?;
+        self.sensor
+            .stop_periodic_measurement()
+            .await
+            .map_err(Error)
+            .context("error stopping SCD4x periodic measurement")?;
+        self.sensor
+            .reinit()
+            .await
+            .map_err(Error)
+            .context("error starting SCD4x periodic measurement")?;
 
-        let serial = self.sensor.serial_number().await?;
+        let serial = self
+            .sensor
+            .serial_number()
+            .await
+            .map_err(Error)
+            .context("error reading SCD4x serial number")?;
         info!(serial, "Connected to {NAME} sensor");
 
-        self.sensor.start_periodic_measurement().await?;
+        self.sensor
+            .start_periodic_measurement()
+            .await
+            .map_err(Error)
+            .context("error starting SCD4x periodic measurement")?;
 
         Ok(())
     }
@@ -82,7 +102,7 @@ where
             co2,
             temperature,
             humidity,
-        } = self.sensor.measurement().await?;
+        } = self.sensor.measurement().await.map_err(Error)?;
         debug!("CO2: {co2} ppm, Temp: {temperature}°C, Humidity: {humidity}%",);
         self.co2_ppm.set_value(co2.into());
         self.temp_c.set_value(temperature.into());

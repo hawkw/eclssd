@@ -1,7 +1,6 @@
-use crate::{metrics, retry, Eclss};
+use crate::{error::SensorError, metrics, retry, Eclss};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
-use embedded_hal::i2c;
 use embedded_hal_async::delay::DelayNs;
 mod status;
 
@@ -31,19 +30,6 @@ pub trait Sensor {
     async fn init(&mut self) -> Result<(), Self::Error>;
 
     async fn poll(&mut self) -> Result<(), Self::Error>;
-}
-
-pub trait SensorError {
-    fn i2c_error(&self) -> Option<i2c::ErrorKind>;
-
-    fn as_status(&self) -> Status {
-        match self.i2c_error() {
-            None => Status::SensorError,
-            Some(i2c::ErrorKind::NoAcknowledge(_)) => Status::NoAcknowledge,
-            Some(i2c::ErrorKind::Bus) => Status::BusError,
-            Some(_) => Status::OtherI2cError,
-        }
-    }
 }
 
 impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
