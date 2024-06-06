@@ -93,12 +93,12 @@ where
         // wait for it to fully come up before starting to poll it.
         // In addition, the sensor requires a 1-hour initial startup phase the
         // first time it's ever powered on.
-        let mut warmup = false;
-        let mut setup = false;
+        let mut warmup = 0;
+        let mut setup = 0;
         loop {
             let validity = match self.sensor.status().await {
                 Ok(status) => status.validity_flag(),
-                Err(e) if warmup || setup => {
+                Err(e) if warmup + setup > 0 => {
                     warn!("error reading ENS160 status: {e}");
                     self.delay.delay_ms(WARMUP_DELAY).await;
                     continue;
@@ -111,23 +111,26 @@ where
                     return Ok(());
                 }
                 ens160::Validity::WarmupPhase => {
-                    if !warmup {
-                        info!("ENS160 is warming up...");
-                        warmup = true;
-                    } else {
-                        debug!("ENS160 is still warming up...");
-                    }
+                    let warmup_secs = 30 * warmup;
+                    info!(
+                        "ENS160 has been warming up for {warmup_secs} seconds \
+                        ({} remaining)",
+                        180usize.saturating_sub(warmup_secs)
+                    );
+                    warmup += 1;
                     self.delay.delay_ms(WARMUP_DELAY).await;
                 }
                 ens160::Validity::InitStartupPhase => {
-                    if !setup {
-                        info!("ENS160 is performing initial setup...");
-                        setup = true;
-                    } else {
-                        debug!("ENS160 is still warming up...");
-                    }
+                    let setup_mins = 2 * setup;
+                    info!(
+                        "ENS160 has been performing initial setup for \
+                        {setup_mins} minutes ({} remaining)",
+                        60usize.saturating_sub(setup_mins),
+                    );
+                    setup += 1;
                     self.delay.delay_ms(INIT_SETUP_DELAY).await;
                 }
+
                 ens160::Validity::InvalidOutput => {
                     return Err(Ens160Error::Invalid.into());
                 }
