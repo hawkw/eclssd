@@ -130,7 +130,7 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "ens160")]
     sensors.spawn({
-        let sensor = sensor::Ens160::new(eclss);
+        let sensor = sensor::Ens160::new(eclss, linux_embedded_hal::Delay);
 
         let backoff = backoff.clone();
         async move {
