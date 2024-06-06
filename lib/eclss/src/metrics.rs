@@ -92,6 +92,7 @@ impl SensorMetrics {
     pub fn fmt_metrics(&self, f: &mut impl fmt::Write) -> fmt::Result {
         self.temp.fmt_metric(f)?;
         self.co2.fmt_metric(f)?;
+        self.eco2.fmt_metric(f)?;
         self.rel_humidity.fmt_metric(f)?;
         self.abs_humidity.fmt_metric(f)?;
         self.pressure.fmt_metric(f)?;
