@@ -5,6 +5,7 @@ use crate::{
     SharedBus,
 };
 use core::fmt;
+use core::num::Wrapping;
 use scd4x::AsyncScd4x;
 
 use embedded_hal::delay::DelayNs as BlockingDelayNs;
@@ -16,7 +17,10 @@ pub struct Scd4x<I: 'static, D> {
     sensor: AsyncScd4x<&'static SharedBus<I>, AsyncBlockingDelayNs<D>>,
     temp_c: &'static Gauge,
     rel_humidity: &'static Gauge,
+    abs_humidity: &'static Gauge,
     co2_ppm: &'static Gauge,
+    abs_humidity_interval: usize,
+    polls: Wrapping<usize>,
 }
 
 impl<I, D> Scd4x<I, D>
@@ -34,8 +38,16 @@ where
             sensor: AsyncScd4x::new(&eclss.i2c, AsyncBlockingDelayNs(delay)),
             temp_c: metrics.temp.register(LABEL).unwrap(),
             rel_humidity: metrics.rel_humidity.register(LABEL).unwrap(),
+            abs_humidity: metrics.abs_humidity.register(LABEL).unwrap(),
             co2_ppm: metrics.co2.register(LABEL).unwrap(),
+            polls: Wrapping(0),
+            abs_humidity_interval: 1,
         }
+    }
+
+    pub fn with_abs_humidity_interval(mut self, interval: usize) -> Self {
+        self.abs_humidity_interval = interval;
+        self
     }
 }
 
@@ -103,10 +115,17 @@ where
             temperature,
             humidity,
         } = self.sensor.measurement().await.map_err(Error)?;
-        debug!("CO2: {co2} ppm, Temp: {temperature}°C, Humidity: {humidity}%",);
+        self.polls += 1;
+        debug!("CO2: {co2} ppm, Temp: {temperature}°C, Humidity: {humidity}%");
         self.co2_ppm.set_value(co2.into());
         self.temp_c.set_value(temperature.into());
         self.rel_humidity.set_value(humidity.into());
+
+        if self.polls.0 % self.abs_humidity_interval == 0 {
+            let abs_humidity = super::absolute_humidity(temperature, humidity);
+            self.abs_humidity.set_value(abs_humidity.into());
+            debug!("Absolute humidity: {abs_humidity} g/m³");
+        }
         Ok(())
     }
 }
