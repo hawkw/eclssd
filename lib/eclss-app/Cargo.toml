@@ -1,0 +1,15 @@
+[package]
+name = "eclss-app"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+journald = ["tracing-journald"]
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+
+tracing = { version = "0.1.40", default-features = false }
+tracing-subscriber = { workspace = true, features = ["fmt", "ansi", "json", "tracing-log"] }
+tracing-journald = { workspace = true, optional = true }

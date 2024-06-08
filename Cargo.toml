@@ -11,19 +11,23 @@ axum = "0.7.5"
 clap = "4.0"
 eclss = { path = "lib/eclss" }
 eclss-api = { path = "lib/eclss-api" }
+eclss-app = { path = "lib/eclss-app" }
 eclss-axum = { path = "lib/eclss-axum" }
 ens160 = { version = "0.6.1", default-features = false }
 embedded-hal = { version = "1" }
 embedded-hal-async = { version = "1" }
 heapless = "0.8"
 humantime = "2"
+hostname = "0.4.0"
 maitake-sync = "0.1.1"
+mdns-sd =  "0.11.1"
 tokio = "1.37"
 tinymetrics = { git = "https://github.com/hawkw/tinymetrics", default-features = false }
 tracing = { version = "0.1.40", default-features = false }
 tracing-subscriber = { version = "0.3.18", default-features = false }
 tracing-journald = { version = "0.3" }
 linux-embedded-hal = "0.4.0"
+local-ip-address = "0.6.1"
 scd4x = { version = "0.3.0", default-features = false }
 serde = { version = "1.0", default-features = false }
 pmsa003i = { path = "lib/pmsa003i" }

@@ -1,11 +1,14 @@
 use anyhow::Context;
 use clap::Parser;
 use eclss::sensor::{self};
+use eclss_app::TraceArgs;
 use embedded_hal::i2c::{self, I2c as BlockingI2c};
 use embedded_hal_async::i2c::I2c;
 use linux_embedded_hal::I2cdev;
 use std::path::PathBuf;
-use tracing_subscriber::prelude::*;
+
+#[cfg(feature = "mdns")]
+mod mdns;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -27,10 +30,17 @@ struct Args {
 
     #[clap(flatten)]
     trace: TraceArgs,
+
+    #[clap(long = "location", env = "ECLSS_LOCATION")]
+    location: Option<String>,
+
+    /// enable mDNS advertisement
+    #[clap(long = "mdns", default_value_t = cfg!(feature = "mdns"))]
+    mdns: bool,
 }
 
 #[derive(Debug, Parser)]
-#[command(next_help_heading = "Sensor Retries")]
+#[command(next_help_heading = "mDNS Advertisement")]
 struct RetryArgs {
     /// initial value for sensor retry backoffs
     #[clap(long, default_value = "500ms")]
@@ -38,45 +48,6 @@ struct RetryArgs {
     /// maximum backoff duration for sensor retries
     #[clap(long, default_value = "60s")]
     max_backoff: humantime::Duration,
-}
-
-#[derive(Debug, Parser)]
-#[command(next_help_heading = "Tracing")]
-struct TraceArgs {
-    /// Tracing-subscriber filter configuration
-    #[clap(env = "ECLSS_LOG", long = "trace", default_value = "info,eclss=debug")]
-    filter: tracing_subscriber::filter::Targets,
-
-    /// Trace output format
-    #[clap(
-        env = "ECLSS_LOG_FORMAT",
-        long = "trace-format",
-        default_value = "text"
-    )]
-    format: TraceFormat,
-
-    /// If true, disable timestamps in trace events.
-    ///
-    /// This is intended for use in environments where timestamps are added by
-    /// an external logging system, such as when running as a systemd service or
-    /// in a container runtime.
-    #[clap(long, env = "ECLSS_LOG_NO_TIMESTAMPS")]
-    no_timestamps: bool,
-
-    /// If true, disable ANSI formatting escape codes in tracing output.
-    #[clap(long, env = "NO_COLOR")]
-    no_color: bool,
-}
-
-#[derive(clap::ValueEnum, Debug, Clone)]
-#[clap(rename_all = "lower")]
-enum TraceFormat {
-    /// Human-readable text logging format.
-    Text,
-    /// JSON logging format.
-    Json,
-    /// Log to journald, rather than to stdout.
-    Journald,
 }
 
 #[tokio::main]
@@ -99,6 +70,13 @@ async fn main() -> anyhow::Result<()> {
             .await
             .unwrap();
     });
+
+    if args.mdns {
+        #[cfg(feature = "mdns")]
+        mdns::advertise(&args)?;
+        #[cfg(not(feature = "mdns"))]
+        anyhow::bail!("mDNS advertisement requires the `mdns` feature to be enabled");
+    }
 
     let mut sensors = tokio::task::JoinSet::new();
     #[cfg(feature = "pmsa003i")]
@@ -163,56 +141,6 @@ impl RetryArgs {
             "configuring sensor retries...",
         );
         eclss::retry::ExpBackoff::new(initial_backoff.into()).with_max(max_backoff.into())
-    }
-}
-
-impl TraceArgs {
-    fn trace_init(&self) {
-        let registry = tracing_subscriber::registry().with(self.filter.clone());
-        match self.format {
-            #[cfg(target_os = "linux")]
-            TraceFormat::Journald => match tracing_journald::Layer::new() {
-                Ok(journald) => {
-                    registry.with(journald).init();
-                    return;
-                }
-                Err(err) => {
-                    eprintln!("failed to connect to journald, falling back to text format: {err}");
-                }
-            },
-            #[cfg(not(target_os = "linux"))]
-            TraceFormat::Journald => {
-                eprintln!(
-                    "journald format is only supported on Linux, falling back to text format"
-                );
-            }
-            TraceFormat::Json => {
-                let fmt = tracing_subscriber::fmt::layer()
-                    .json()
-                    .with_current_span(false)
-                    .with_span_list(true)
-                    .flatten_event(true)
-                    .with_thread_ids(true);
-                if self.no_timestamps {
-                    registry.with(fmt.without_time()).init();
-                } else {
-                    registry.with(fmt).init();
-                }
-                return;
-            }
-            TraceFormat::Text => {
-                // do nothing, as we also want to fall through to the text
-                // format if journald init fails.
-            }
-        }
-        let fmt = tracing_subscriber::fmt::layer()
-            .with_thread_ids(true)
-            .with_ansi(!self.no_color);
-        if self.no_timestamps {
-            registry.with(fmt.without_time()).init();
-        } else {
-            registry.with(fmt).init();
-        }
     }
 }
 

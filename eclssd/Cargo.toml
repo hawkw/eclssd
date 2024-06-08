@@ -6,24 +6,28 @@ readme = "README.md"
 license = "MIT"
 
 [features]
-default = ["scd41", "pmsa003i", "ens160"]
+default = ["scd41", "pmsa003i", "ens160", "mdns"]
 scd41 = ["eclss/scd41"]
 scd40 = ["eclss/scd40"]
 pmsa003i = ["eclss/pmsa003i"]
 ens160 = ["eclss/ens160"]
+mdns = ["mdns-sd", "hostname", "local-ip-address"]
 
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 eclss = { workspace = true, features = ["tracing", "serde"] }
+eclss-app = { workspace = true, features = ["journald"] }
 eclss-axum = { workspace = true }
 embedded-hal = { workspace = true }
 embedded-hal-async = { workspace = true }
 humantime = { workspace = true }
+hostname = { workspace = true, optional = true }
 linux-embedded-hal = { workspace = true, features = ["i2c", "async-tokio"] }
+local-ip-address = { workspace = true, optional = true }
+mdns-sd = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["fmt", "json", "ansi", "tracing-log"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 tracing-journald = { workspace = true }
