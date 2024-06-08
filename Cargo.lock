@@ -344,6 +344,8 @@ dependencies = [
  "clap",
  "eclss-api",
  "eclss-app",
+ "humantime",
+ "mdns-sd",
  "tokio",
  "tracing",
 ]

@@ -1,0 +1,14 @@
+[package]
+name = "eclssctl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { workspace = true }
+eclss-app = { workspace = true }
+eclss-api = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true, features = ["io-util", "net", "rt", "macros"]}
+humantime = { workspace = true }
+mdns-sd = { workspace = true }

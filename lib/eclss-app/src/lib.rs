@@ -5,7 +5,7 @@ use clap::Parser;
 #[command(next_help_heading = "Tracing")]
 pub struct TraceArgs {
     /// Tracing-subscriber filter configuration
-    #[clap(env = "ECLSS_LOG", long = "trace", default_value = "info,eclss=debug")]
+    #[clap(env = "ECLSS_LOG", long = "trace", default_value = "info")]
     filter: tracing_subscriber::filter::Targets,
 
     /// Trace output format

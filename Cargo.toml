@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "eclssd",
+    "eclssctl",
     "lib/*",
 ]
 resolver = "2"
