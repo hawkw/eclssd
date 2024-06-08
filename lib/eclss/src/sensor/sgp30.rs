@@ -16,7 +16,6 @@ pub struct Sgp30<I: 'static, D> {
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
     abs_humidity: &'static tinymetrics::GaugeFamily<'static, MAX_METRICS, SensorLabel>,
-    polls: usize,
 }
 
 /// Wrapper type to add a `Display` implementation to the `sgp30` crate's error
