@@ -18,6 +18,7 @@ pub struct Sgp30<I: 'static, D> {
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
     abs_humidity: &'static tinymetrics::GaugeFamily<'static, MAX_METRICS, SensorLabel>,
+    calibration_polls: usize,
 }
 
 /// Wrapper type to add a `Display` implementation to the `sgp30` crate's error
@@ -44,6 +45,7 @@ where
             tvoc: metrics.tvoc.register(LABEL).unwrap(),
             eco2: metrics.eco2.register(LABEL).unwrap(),
             abs_humidity: &metrics.abs_humidity,
+            calibration_polls: 0,
         }
     }
 }
@@ -91,35 +93,6 @@ where
             .init()
             .await
             .context("error initializing SGP30")?;
-        tracing::info!("Initializing SGP30...");
-        for s in 1..=15 {
-            let baseline = self
-                .sensor
-                .get_baseline()
-                .await
-                .context("error reading SGP30 baseline")?;
-            let sgp30::Measurement {
-                tvoc_ppb,
-                co2eq_ppm,
-            } = self
-                .sensor
-                .measure()
-                .await
-                .context("error reading SGP30 measurements")?;
-            let sgp30::RawSignals { h2, ethanol } = self
-                .sensor
-                .measure_raw_signals()
-                .await
-                .context("error reading SGP30 raw signals")?;
-            tracing::info!(
-                "SGP30 calibrating baseline for {s}/15 seconds, baseline CO₂eq: {}, TVOC: {} ...",
-                baseline.co2eq,
-                baseline.tvoc,
-            );
-            tracing::debug!(
-                "CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb, H₂: {h2}, Ethanol: {ethanol}"
-            )
-        }
 
         Ok(())
     }
@@ -160,8 +133,17 @@ where
             .measure()
             .await
             .context("error reading SGP30 measurements")?;
-        self.tvoc.set_value(tvoc_ppb.into());
-        self.eco2.set_value(co2eq_ppm.into());
+        if self.calibration_polls <= 15 {
+            tracing::info!(
+                ?baseline,
+                "SGP30 calibrating baseline for {}/15 seconds...",
+                self.calibration_polls,
+            );
+            self.calibration_polls += 1;
+        } else {
+            self.tvoc.set_value(tvoc_ppb.into());
+            self.eco2.set_value(co2eq_ppm.into());
+        }
         tracing::debug!("CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
 
         let sgp30::RawSignals { h2, ethanol } = self
