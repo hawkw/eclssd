@@ -84,26 +84,22 @@ where
         self.sensor
             .stop_periodic_measurement()
             .await
-            .map_err(Error)
             .context("error stopping SCD4x periodic measurement")?;
         self.sensor
             .reinit()
             .await
-            .map_err(Error)
             .context("error starting SCD4x periodic measurement")?;
 
         let serial = self
             .sensor
             .serial_number()
             .await
-            .map_err(Error)
             .context("error reading SCD4x serial number")?;
         info!(serial, "Connected to {NAME} sensor");
 
         self.sensor
             .start_periodic_measurement()
             .await
-            .map_err(Error)
             .context("error starting SCD4x periodic measurement")?;
 
         Ok(())

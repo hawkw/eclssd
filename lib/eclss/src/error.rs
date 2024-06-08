@@ -40,10 +40,13 @@ impl<E: fmt::Display> fmt::Display for I2cSensorError<E> {
     }
 }
 
-impl<T, E> Context<T, E> for Result<T, E> {
-    fn context(self, msg: &'static str) -> Result<T, EclssError<E>> {
+impl<T, E, E2> Context<T, E2> for Result<T, E>
+where
+    E2: From<E>,
+{
+    fn context(self, msg: &'static str) -> Result<T, EclssError<E2>> {
         self.map_err(move |error| EclssError {
-            error,
+            error: error.into(),
             msg: Some(msg),
         })
     }

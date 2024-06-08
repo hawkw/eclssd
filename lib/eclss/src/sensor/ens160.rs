@@ -71,7 +71,6 @@ where
             .sensor
             .part_id()
             .await
-            .map_err(Ens160Error::I2c)
             .context("error reading ENS160 part ID")?;
         info!("ENS160 part ID: 0x{part_id:04x}");
 
@@ -79,14 +78,12 @@ where
             .sensor
             .firmware_version()
             .await
-            .map_err(Ens160Error::I2c)
             .context("error reading ENS160 firmware version")?;
         info!("ENS160 firmware version: v{min}.{minor}.{patch}");
 
         self.sensor
             .operational()
             .await
-            .map_err(Ens160Error::I2c)
             .context("error setting ENS160 to operational mode")?;
 
         // The ENS160 sensor has a 3-minute warmup period when powered on, so
@@ -149,7 +146,6 @@ where
             self.sensor
                 .set_temp(temp)
                 .await
-                .map_err(Ens160Error::I2c)
                 .context("error setting current temperature for ENS160")?;
         }
 
@@ -163,7 +159,6 @@ where
             self.sensor
                 .set_temp(temp)
                 .await
-                .map_err(Ens160Error::I2c)
                 .context("error setting current temperature for ENS160")?;
         }
 
@@ -193,7 +188,6 @@ where
             .sensor
             .tvoc()
             .await
-            .map_err(Ens160Error::I2c)
             .context("error reading ENS160 tVOC")?;
         debug!("ENS160 TVOC: {tvoc} ppb",);
         self.tvoc.set_value(tvoc.into());
@@ -202,13 +196,18 @@ where
             .sensor
             .eco2()
             .await
-            .map_err(Ens160Error::I2c)
             .context("error reading ENS160 eCO2")?;
         let eco2 = *eco2;
         debug!("ENS160 eCO2: {eco2} ppm");
         self.eco2.set_value(eco2.into());
 
         Ok(())
+    }
+}
+
+impl<E> From<E> for Ens160Error<E> {
+    fn from(value: E) -> Self {
+        Self::I2c(value)
     }
 }
 
