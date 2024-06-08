@@ -6,7 +6,7 @@ use embedded_hal::{
     delay::DelayNs as BlockingDelayNs,
     i2c::{self, I2c as BlockingI2c},
 };
-use embedded_hal_async::i2c::I2c;
+use embedded_hal_async::{delay::DelayNs, i2c::I2c};
 use linux_embedded_hal::I2cdev;
 use std::path::PathBuf;
 
