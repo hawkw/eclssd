@@ -7,8 +7,10 @@ use crate::{
 use core::fmt;
 use core::time::Duration;
 
-use embedded_hal::i2c;
-use embedded_hal_async::{delay::DelayNs, i2c::I2c};
+use embedded_hal_async::{
+    delay::DelayNs,
+    i2c::{self, I2c},
+};
 use sgp30::AsyncSgp30;
 
 pub struct Sgp30<I: 'static, D> {
@@ -42,7 +44,6 @@ where
             tvoc: metrics.tvoc.register(LABEL).unwrap(),
             eco2: metrics.eco2.register(LABEL).unwrap(),
             abs_humidity: &metrics.abs_humidity,
-            polls: 0,
         }
     }
 }

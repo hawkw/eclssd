@@ -8,13 +8,11 @@ use core::fmt;
 use core::num::Wrapping;
 use scd4x::AsyncScd4x;
 
-use embedded_hal::delay::DelayNs as BlockingDelayNs;
 use embedded_hal::i2c;
-use embedded_hal_async::delay::DelayNs as AsyncDelayNs;
-use embedded_hal_async::i2c::I2c;
+use embedded_hal_async::{delay::DelayNs, i2c::I2c};
 
 pub struct Scd4x<I: 'static, D> {
-    sensor: AsyncScd4x<&'static SharedBus<I>, AsyncBlockingDelayNs<D>>,
+    sensor: AsyncScd4x<&'static SharedBus<I>, D>,
     temp_c: &'static Gauge,
     rel_humidity: &'static Gauge,
     abs_humidity: &'static Gauge,
@@ -26,7 +24,7 @@ pub struct Scd4x<I: 'static, D> {
 impl<I, D> Scd4x<I, D>
 where
     I: I2c<i2c::SevenBitAddress>,
-    D: BlockingDelayNs,
+    D: DelayNs,
 {
     pub fn new<const SENSORS: usize>(
         eclss: &'static crate::Eclss<I, { SENSORS }>,
@@ -35,7 +33,7 @@ where
         let metrics = &eclss.metrics;
         const LABEL: metrics::SensorLabel = metrics::SensorLabel(NAME);
         Self {
-            sensor: AsyncScd4x::new(&eclss.i2c, AsyncBlockingDelayNs(delay)),
+            sensor: AsyncScd4x::new(&eclss.i2c, delay),
             temp_c: metrics.temp.register(LABEL).unwrap(),
             rel_humidity: metrics.rel_humidity.register(LABEL).unwrap(),
             abs_humidity: metrics.abs_humidity.register(LABEL).unwrap(),
@@ -54,14 +52,6 @@ where
 #[derive(Debug)]
 pub struct Error<E>(scd4x::Error<E>);
 
-struct AsyncBlockingDelayNs<D>(D);
-
-impl<D: BlockingDelayNs> AsyncDelayNs for AsyncBlockingDelayNs<D> {
-    async fn delay_ns(&mut self, ns: u32) {
-        self.0.delay_ns(ns);
-    }
-}
-
 #[cfg(feature = "scd41")]
 const NAME: &str = "SCD41";
 #[cfg(not(feature = "scd41"))]
@@ -71,7 +61,7 @@ impl<I, D> Sensor for Scd4x<I, D>
 where
     I: I2c + 'static,
     I::Error: i2c::Error,
-    D: BlockingDelayNs,
+    D: DelayNs,
 {
     const NAME: &'static str = NAME;
     const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(5);

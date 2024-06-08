@@ -94,11 +94,25 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(any(feature = "scd41", feature = "scd40"))]
     sensors.spawn({
-        let sensor = sensor::Scd4x::new(eclss, linux_embedded_hal::Delay);
+        let sensor = sensor::Scd4x::new(eclss, AsyncBlockingDelayNs(linux_embedded_hal::Delay));
 
         let backoff = backoff.clone();
         async move {
             tracing::info!("starting SCD4x...");
+            eclss
+                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
+                .await
+                .unwrap()
+        }
+    });
+
+    #[cfg(feature = "sgp30")]
+    sensors.spawn({
+        let sensor = sensor::Sgp30::new(eclss, AsyncBlockingDelayNs(linux_embedded_hal::Delay));
+
+        let backoff = backoff.clone();
+        async move {
+            tracing::info!("starting SGP30...");
             eclss
                 .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
                 .await
@@ -164,4 +178,16 @@ where
     I: i2c::ErrorType,
 {
     type Error = I::Error;
+}
+
+/// The `embedded_hal_async` implementation for `linux_embedded_hal`'s delay
+/// type is not very precise. Use blocking delays for short sleeps in timing
+/// critical sensor wire protocols, and use the async delay for longer sleeps
+/// like in the poll loop.
+struct AsyncBlockingDelayNs<D>(D);
+
+impl<D: BlockingDelayNs> DelayNs for AsyncBlockingDelayNs<D> {
+    async fn delay_ns(&mut self, ns: u32) {
+        self.0.delay_ns(ns);
+    }
 }
