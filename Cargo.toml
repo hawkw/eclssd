@@ -30,10 +30,12 @@ tracing-journald = { version = "0.3" }
 linux-embedded-hal = "0.4.0"
 local-ip-address = "0.6.1"
 scd4x = { version = "0.3.0", default-features = false }
+sgp30 = { version = "0.4.0" }
 serde = { version = "1.0", default-features = false }
 pmsa003i = { path = "lib/pmsa003i" }
 
 [patch.crates-io]
 linux-embedded-hal = { git = "https://github.com/rust-embedded/linux-embedded-hal/" }
 scd4x = { git = "https://github.com/hawkw/scd4x-rs", branch = "eliza/async" }
-sensirion-i2c = { git = "https://github.com/hawkw/sensirion-i2c-rs", rev = "6dde55bec555b2070414c241a4d0618fdf4e2346" }
+sgp30 = { git = "https://github.com/hawkw/sgp30-rs", branch = "eliza/embedded-hal-async" }
+sensirion-i2c = { git = "https://github.com/sensirion/sensirion-i2c-rs", rev = "f7b9f3a81b777bc6e6b2f0acb4c1ef9c57dfa06d" }

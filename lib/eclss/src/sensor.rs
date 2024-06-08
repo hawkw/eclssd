@@ -6,19 +6,21 @@ mod status;
 
 #[cfg(feature = "pmsa003i")]
 pub mod pmsa003i;
-
 #[cfg(feature = "pmsa003i")]
 pub use pmsa003i::Pmsa003i;
 
 #[cfg(any(feature = "scd40", feature = "scd41"))]
 pub mod scd40;
-
 #[cfg(any(feature = "scd40", feature = "scd41"))]
 pub use scd40::Scd4x;
 
+#[cfg(feature = "sgp30")]
+pub mod sgp30;
+#[cfg(feature = "sgp30")]
+pub use sgp30::Sgp30;
+
 #[cfg(feature = "ens160")]
 pub mod ens160;
-
 #[cfg(feature = "ens160")]
 pub use self::ens160::Ens160;
 
