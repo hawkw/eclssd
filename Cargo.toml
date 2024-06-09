@@ -23,7 +23,7 @@ heapless = "0.8"
 humantime = "2"
 hostname = "0.4.0"
 maitake-sync = "0.1.1"
-mdns-sd =  "0.11.1"
+mdns-sd = "0.11.1"
 tokio = "1.37"
 tokio-stream = { version = "0.1.15" }
 tinymetrics = { git = "https://github.com/hawkw/tinymetrics", default-features = false }

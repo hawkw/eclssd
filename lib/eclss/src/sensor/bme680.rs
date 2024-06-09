@@ -83,16 +83,25 @@ where
     }
 
     async fn poll(&mut self) -> Result<(), Self::Error> {
+        let mut timeouts = 0;
+        let data = loop {
+            match self.sensor.measure().await {
+                Ok(data) => break data,
+                // don't get into long backoffs on timeouts...
+                Err(BmeError::MeasuringTimeOut) if timeouts < 5 => {
+                    timeouts += 1;
+                    tracing::trace!("BME680 measurement timed out, retrying...");
+                }
+                Err(BmeError::MeasuringTimeOut) => return Ok(()),
+                Err(e) => return Err(e).context("error reading BME680 measurements"),
+            }
+        };
         let MeasurementData {
             temperature,
             humidity,
             pressure,
             gas_resistance,
-        } = self
-            .sensor
-            .measure()
-            .await
-            .context("error reading BME680 measurements")?;
+        } = data;
         self.polls += 1;
 
         // pretty sure the `bosch-bme680` library is off by a factor of 100 when
