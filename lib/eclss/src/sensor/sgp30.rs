@@ -1,6 +1,6 @@
 use crate::{
     error::{Context, EclssError, SensorError},
-    metrics::{Gauge, SensorLabel, MAX_METRICS},
+    metrics::{Gauge, SensorLabel, HUMIDITY_METRICS},
     sensor::Sensor,
     SharedBus,
 };
@@ -17,7 +17,7 @@ pub struct Sgp30<I: 'static, D> {
     sensor: AsyncSgp30<&'static SharedBus<I>, D>,
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
-    abs_humidity: &'static tinymetrics::GaugeFamily<'static, MAX_METRICS, SensorLabel>,
+    abs_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorLabel>,
     calibration_polls: usize,
 }
 

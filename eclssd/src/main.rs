@@ -57,6 +57,19 @@ struct RetryArgs {
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     args.trace.trace_init();
+    use eclss::metrics::*;
+    tracing::debug!(
+        TEMP_METRICS,
+        CO2_METRICS,
+        ECO2_METRICS,
+        HUMIDITY_METRICS,
+        PRESSURE_METRICS,
+        VOC_RESISTANCE_METRICS,
+        TVOC_METRICS,
+        PM_CONC_METRICS,
+        PM_COUNT_METRICS,
+        SENSORS
+    );
 
     let dev = I2cdev::new(&args.i2cdev)
         .with_context(|| format!("failed to open I2C device {}", args.i2cdev.display()))?;

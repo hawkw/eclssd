@@ -1,6 +1,6 @@
 use crate::{
     error::{Context, EclssError, SensorError},
-    metrics::{Gauge, SensorLabel, MAX_METRICS},
+    metrics::{Gauge, SensorLabel, HUMIDITY_METRICS, TEMP_METRICS},
     sensor::Sensor,
     SharedBus,
 };
@@ -13,8 +13,8 @@ pub struct Ens160<I: 'static, D> {
     sensor: ens160::Ens160<&'static SharedBus<I>>,
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
-    temp: &'static tinymetrics::GaugeFamily<'static, MAX_METRICS, SensorLabel>,
-    rel_humidity: &'static tinymetrics::GaugeFamily<'static, MAX_METRICS, SensorLabel>,
+    temp: &'static tinymetrics::GaugeFamily<'static, TEMP_METRICS, SensorLabel>,
+    rel_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorLabel>,
     delay: D,
 }
 
