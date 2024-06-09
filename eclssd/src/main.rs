@@ -152,7 +152,7 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "bme680")]
     sensors.spawn({
-        let sensor = sensor::Bme680::new(eclss, linux_embedded_hal::Delay);
+        let sensor = sensor::Bme680::new(eclss, AsyncBlockingDelayNs(linux_embedded_hal::Delay));
         let backoff = backoff.clone();
         async move {
             tracing::info!("starting BME680...");
