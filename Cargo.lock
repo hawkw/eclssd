@@ -199,6 +199,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf4b9d6a944f767f8e5e0db018570623c85f3d925ac718db4e06d0187adb21c1"
 
 [[package]]
+name = "bosch-bme680"
+version = "1.0.2"
+source = "git+https://github.com/hawkw/bosch-bme680?branch=eliza/async#69178cdeb1ad96013a6cb0638f68f475cef379f2"
+dependencies = [
+ "bitfield",
+ "embedded-hal",
+ "embedded-hal-async",
+ "log",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -315,6 +326,7 @@ checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 name = "eclss"
 version = "0.1.0"
 dependencies = [
+ "bosch-bme680",
  "eclss-api",
  "embedded-hal",
  "embedded-hal-async",

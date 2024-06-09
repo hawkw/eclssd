@@ -6,13 +6,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
+bme680 = ["dep:bosch-bme680"]
 serde = ["dep:serde", "tinymetrics/serde"]
 scd40 = ["dep:scd4x"]
 scd41 = ["dep:scd4x", "scd4x/scd41"]
 sgp30 = ["dep:sgp30"]
-default = ["pmsa003i", "scd40", "ens160", "sgp30"]
+default = ["pmsa003i", "scd40", "ens160", "sgp30", "bme680"]
 
 [dependencies]
+bosch-bme680 = { workspace = true, optional = true, features = ["embedded-hal-async"] }
 eclss-api = { workspace = true, features = ["fmt"] }
 ens160 = { workspace = true, optional = true, features = ["async"] }
 embedded-hal-async = { workspace = true }

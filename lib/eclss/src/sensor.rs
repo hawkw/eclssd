@@ -4,6 +4,10 @@ use core::time::Duration;
 use embedded_hal_async::delay::DelayNs;
 mod status;
 
+#[cfg(feature = "bme680")]
+pub mod bme680;
+pub use bme680::Bme680;
+
 #[cfg(feature = "pmsa003i")]
 pub mod pmsa003i;
 #[cfg(feature = "pmsa003i")]

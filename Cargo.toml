@@ -9,6 +9,7 @@ resolver = "2"
 [workspace.dependencies]
 anyhow = "1.0"
 axum = "0.7.5"
+bosch-bme680 = "1.0.2"
 clap = "4.0"
 eclss = { path = "lib/eclss" }
 eclss-api = { path = "lib/eclss-api" }
@@ -38,6 +39,7 @@ sgp30 = { version = "0.4.0", default-features = false }
 serde = { version = "1.0", default-features = false }
 
 [patch.crates-io]
+bosch-bme680 = { git = "https://github.com/hawkw/bosch-bme680", branch = "eliza/async" }
 linux-embedded-hal = { git = "https://github.com/rust-embedded/linux-embedded-hal/" }
 scd4x = { git = "https://github.com/hawkw/scd4x-rs", branch = "eliza/async" }
 sgp30 = { git = "https://github.com/hawkw/sgp30-rs", branch = "eliza/embedded-hal-async" }

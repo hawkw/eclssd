@@ -6,7 +6,8 @@ readme = "README.md"
 license = "MIT"
 
 [features]
-default = ["scd41", "sgp30", "pmsa003i", "ens160", "mdns"]
+default = ["bme680", "scd41", "sgp30", "pmsa003i", "ens160", "mdns"]
+bme680 = ["eclss/bme680"]
 scd41 = ["eclss/scd41"]
 scd40 = ["eclss/scd40"]
 sgp30 = ["eclss/sgp30"]
