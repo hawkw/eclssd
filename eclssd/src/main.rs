@@ -210,22 +210,19 @@ where
 /// The `embedded_hal_async` implementation for `linux_embedded_hal`'s delay
 /// type is not very precise. Use blocking delays for short sleeps in timing
 /// critical sensor wire protocols, and use the async delay for longer sleeps
-/// like in the poll loop.
+/// like in the poll loop.ca
 #[derive(Default)]
 struct GoodDelay(spin_sleep::SpinSleeper);
 impl GoodDelay {
-    const ONE_MS_NANOS: u64 = Duration::from_millis(1).as_nanos() as u64;
+    const ONE_MS_NANOS: u32 = Duration::from_millis(1).as_nanos() as u32;
 }
 
 impl DelayNs for GoodDelay {
     async fn delay_ns(&mut self, ns: u32) {
-        let mut ns = ns as u64;
-        let ms = ns % Self::ONE_MS_NANOS;
-        if ms > 0 {
-            tokio::time::sleep(Duration::from_millis(ms)).await;
-            ns -= ms * Self::ONE_MS_NANOS;
+        if ns >= Self::ONE_MS_NANOS {
+            tokio::time::sleep(Duration::from_nanos(ns as u64)).await;
+        } else {
+            self.0.sleep_ns(ns as u64);
         }
-
-        self.0.sleep_ns(ns);
     }
 }
