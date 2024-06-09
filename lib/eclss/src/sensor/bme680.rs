@@ -90,9 +90,12 @@ where
                 // don't get into long backoffs on timeouts...
                 Err(BmeError::MeasuringTimeOut) if timeouts < 5 => {
                     timeouts += 1;
-                    tracing::trace!("BME680 measurement timed out, retrying...");
+                    tracing::info!("BME680 measurement timed out, retrying...");
                 }
-                Err(BmeError::MeasuringTimeOut) => return Ok(()),
+                Err(BmeError::MeasuringTimeOut) => {
+                    tracing::warn!("BME680 timed out a bunch of times, giving up...");
+                    return Ok(());
+                }
                 Err(e) => return Err(e).context("error reading BME680 measurements"),
             }
         };
