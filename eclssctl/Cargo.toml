@@ -8,7 +8,10 @@ anyhow = { workspace = true }
 clap = { workspace = true }
 eclss-app = { workspace = true }
 eclss-api = { workspace = true }
-tracing = { workspace = true }
-tokio = { workspace = true, features = ["io-util", "net", "rt", "macros"]}
+futures = { workspace = true }
 humantime = { workspace = true }
 mdns-sd = { workspace = true }
+reqwest = { workspace = true, default-features = false, features = ["charset", "rustls-tls", "http2", "json"] }
+tracing = { workspace = true}
+tokio = { workspace = true, features = ["io-util", "net", "rt", "macros"]}
+tokio-stream = { workspace = true }

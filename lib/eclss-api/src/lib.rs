@@ -1,4 +1,5 @@
 #![no_std]
+use core::time::Duration;
 use serde::{Deserialize, Serialize};
 
 pub const MAX_SENSORS: usize = 16;
@@ -6,7 +7,11 @@ pub const MAX_SENSORS: usize = 16;
 #[derive(Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "fmt", derive(Debug))]
 #[non_exhaustive]
-pub struct SensorState {}
+pub struct SensorState {
+    status: SensorStatus,
+    found: bool,
+    poll_interval: Duration,
+}
 
 /// Represents the status of an I2C sensor.
 #[derive(Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
