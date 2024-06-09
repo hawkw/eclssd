@@ -2,13 +2,11 @@ use anyhow::Context;
 use clap::Parser;
 use eclss::sensor::{self};
 use eclss_app::TraceArgs;
-use embedded_hal::{
-    delay::DelayNs as BlockingDelayNs,
-    i2c::{self, I2c as BlockingI2c},
-};
+use embedded_hal::i2c::{self, I2c as BlockingI2c};
 use embedded_hal_async::{delay::DelayNs, i2c::I2c};
 use linux_embedded_hal::I2cdev;
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[cfg(feature = "mdns")]
 mod mdns;
@@ -102,7 +100,7 @@ async fn main() -> anyhow::Result<()> {
         async move {
             tracing::info!("starting PMSA003I...");
             eclss
-                .run_sensor(sensor, backoff, linux_embedded_hal::Delay)
+                .run_sensor(sensor, backoff, GoodDelay::default())
                 .await
                 .unwrap()
         }
@@ -110,7 +108,7 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(any(feature = "scd41", feature = "scd40"))]
     sensors.spawn({
-        let sensor = sensor::Scd4x::new(eclss, AsyncBlockingDelayNs(linux_embedded_hal::Delay));
+        let sensor = sensor::Scd4x::new(eclss, GoodDelay::default());
 
         let backoff = backoff.clone();
         async move {
@@ -124,7 +122,7 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "sgp30")]
     sensors.spawn({
-        let sensor = sensor::Sgp30::new(eclss, AsyncBlockingDelayNs(linux_embedded_hal::Delay));
+        let sensor = sensor::Sgp30::new(eclss, GoodDelay::default());
 
         let backoff = backoff.clone();
         async move {
@@ -138,13 +136,13 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "ens160")]
     sensors.spawn({
-        let sensor = sensor::Ens160::new(eclss, linux_embedded_hal::Delay);
+        let sensor = sensor::Ens160::new(eclss, GoodDelay::default());
 
         let backoff = backoff.clone();
         async move {
             tracing::info!("starting ENS160...");
             eclss
-                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
+                .run_sensor(sensor, backoff.clone(), GoodDelay::default())
                 .await
                 .unwrap()
         }
@@ -152,12 +150,12 @@ async fn main() -> anyhow::Result<()> {
 
     #[cfg(feature = "bme680")]
     sensors.spawn({
-        let sensor = sensor::Bme680::new(eclss, AsyncBlockingDelayNs(linux_embedded_hal::Delay));
+        let sensor = sensor::Bme680::new(eclss, GoodDelay::default());
         let backoff = backoff.clone();
         async move {
             tracing::info!("starting BME680...");
             eclss
-                .run_sensor(sensor, backoff, linux_embedded_hal::Delay)
+                .run_sensor(sensor, backoff, GoodDelay::default())
                 .await
                 .unwrap()
         }
@@ -213,10 +211,21 @@ where
 /// type is not very precise. Use blocking delays for short sleeps in timing
 /// critical sensor wire protocols, and use the async delay for longer sleeps
 /// like in the poll loop.
-struct AsyncBlockingDelayNs<D>(D);
+#[derive(Default)]
+struct GoodDelay(spin_sleep::SpinSleeper);
+impl GoodDelay {
+    const ONE_MS_NANOS: u64 = Duration::from_millis(1).as_nanos() as u64;
+}
 
-impl<D: BlockingDelayNs> DelayNs for AsyncBlockingDelayNs<D> {
+impl DelayNs for GoodDelay {
     async fn delay_ns(&mut self, ns: u32) {
-        self.0.delay_ns(ns);
+        let mut ns = ns as u64;
+        let ms = ns % Self::ONE_MS_NANOS;
+        if ms > 0 {
+            tokio::time::sleep(Duration::from_millis(ms)).await;
+            ns -= ms * Self::ONE_MS_NANOS;
+        }
+
+        self.0.sleep_ns(ns);
     }
 }
