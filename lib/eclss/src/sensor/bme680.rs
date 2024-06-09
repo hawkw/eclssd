@@ -4,7 +4,7 @@ use crate::{
     sensor::Sensor,
     SharedBus,
 };
-use bosch_bme680::{AsyncBme680, BmeError};
+use bosch_bme680::{AsyncBme680, BmeError, MeasurmentData as MeasurementData};
 use core::fmt;
 use core::num::Wrapping;
 use embedded_hal_async::{
@@ -83,7 +83,7 @@ where
     }
 
     async fn poll(&mut self) -> Result<(), Self::Error> {
-        let bosch_bme680::MeasurmentData {
+        let MeasurementData {
             temperature,
             humidity,
             pressure,
