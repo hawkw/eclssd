@@ -63,7 +63,7 @@
               "sht4x-0.2.0" = "sha256-LrOvkvNXFNL4EM9aAZfSDFM7zs6M54BGeixtDN5pFCo=";
               "sensirion-i2c-0.3.0" = "sha256-HS6anAmUBBrhlP/kBSv243ArnK3ULK8+0JA8kpe6LAk=";
               "tinymetrics-0.1.0" = "sha256-7y2pq8qBtOpXO6ii/j+NhwsglxRMLvz8hx7a/w6GRBU=";
-              "bosch-bme680-1.0.2" = "sha256-C4l3MLqI9HYt2t459iccyJHjcVnFsXEywM3D+kcC95o=";
+              "bosch-bme680-1.0.2" = "sha256-g06bpJP3PgFF9peraYxr3pU5jzZrA8xL/D6+kwr/Nfc=";
             };
           };
         });
@@ -106,10 +106,17 @@
         });
 
       nixosModules.default = { config, lib, pkgs, ... }: with lib; let
-        name = "eclssd";
+        name = " eclssd ";
         cfg = config.services.${name};
         cfgCtl = config.programs.eclssctl;
-        description = "Environmental Controls and Life Support Systems daemon";
+        description = "
+                Environmental
+                Controls
+                and
+                Life
+                Support
+                Systems
+                daemon ";
       in
       {
         options = with types; {
@@ -119,9 +126,16 @@
 
             i2cdev = mkOption {
               type = path;
-              default = "/dev/i2c-1";
-              example = "/dev/i2c-1";
-              description = "The I2C device to use for communication with sensors.";
+              default = " /dev/i2c-1 ";
+              example = " /dev/i2c-1 ";
+              description = "
+                The
+                I2C
+                device
+                to
+                use
+                for
+                communication with sensors.";
             };
 
             openPorts = mkOption {

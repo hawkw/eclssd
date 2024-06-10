@@ -207,7 +207,7 @@ checksum = "cf4b9d6a944f767f8e5e0db018570623c85f3d925ac718db4e06d0187adb21c1"
 [[package]]
 name = "bosch-bme680"
 version = "1.0.2"
-source = "git+https://github.com/hawkw/bosch-bme680?branch=eliza/async#69178cdeb1ad96013a6cb0638f68f475cef379f2"
+source = "git+https://github.com/hawkw/bosch-bme680?branch=eliza/async#71e66e0d5559ea6014c09f8847deb7267b4692e7"
 dependencies = [
  "bitfield",
  "embedded-hal",
