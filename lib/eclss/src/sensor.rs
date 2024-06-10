@@ -23,6 +23,11 @@ pub mod sgp30;
 #[cfg(feature = "sgp30")]
 pub use sgp30::Sgp30;
 
+#[cfg(feature = "sht41")]
+pub mod sht41;
+#[cfg(feature = "sht41")]
+pub use sht41::Sht41;
+
 #[cfg(feature = "ens160")]
 pub mod ens160;
 #[cfg(feature = "ens160")]

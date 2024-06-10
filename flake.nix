@@ -60,6 +60,7 @@
               "linux-embedded-hal-0.4.0" = "sha256-2CxZcBMWaGP0DTiyQoDkwVFoNbEBojGySirSb2z+40U=";
               "scd4x-0.3.0" = "sha256-2pbYEDX2454lP2701eyhtRWu1sSW8RSStVt6iOF0fmI=";
               "sgp30-0.4.0" = "sha256-5LRVMFMTxpgQpxrN0sMTiedL4Sw6NBRd86+ZvRP8CVk=";
+              "sht4x-0.2.0" = "sha256-LrOvkvNXFNL4EM9aAZfSDFM7zs6M54BGeixtDN5pFCo=";
               "sensirion-i2c-0.3.0" = "sha256-HS6anAmUBBrhlP/kBSv243ArnK3ULK8+0JA8kpe6LAk=";
               "tinymetrics-0.1.0" = "sha256-7y2pq8qBtOpXO6ii/j+NhwsglxRMLvz8hx7a/w6GRBU=";
               "bosch-bme680-1.0.2" = "sha256-C4l3MLqI9HYt2t459iccyJHjcVnFsXEywM3D+kcC95o=";

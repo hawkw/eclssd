@@ -134,6 +134,20 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
+    #[cfg(feature = "sht41")]
+    sensors.spawn({
+        let sensor = sensor::Sht41::new(eclss, GoodDelay::default());
+
+        let backoff = backoff.clone();
+        async move {
+            tracing::info!("starting SHT41...");
+            eclss
+                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
+                .await
+                .unwrap()
+        }
+    });
+
     #[cfg(feature = "ens160")]
     sensors.spawn({
         let sensor = sensor::Ens160::new(eclss, GoodDelay::default());

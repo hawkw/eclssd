@@ -18,6 +18,7 @@ eclss-axum = { path = "lib/eclss-axum" }
 ens160 = { version = "0.6.1", default-features = false }
 embedded-hal = { version = "1" }
 embedded-hal-async = { version = "1" }
+fixed = "1.20.0"
 futures = "0.3"
 heapless = "0.8"
 humantime = "2"
@@ -36,6 +37,7 @@ pmsa003i = { path = "lib/pmsa003i" }
 reqwest = { version = "0.12.4", default-features = false }
 scd4x = { version = "0.3.0", default-features = false }
 sgp30 = { version = "0.4.0", default-features = false }
+sht4x = { version = "0.2.0", default-features = false }
 serde = { version = "1.0", default-features = false }
 spin_sleep = { version = "1.2.0" }
 
@@ -44,4 +46,5 @@ bosch-bme680 = { git = "https://github.com/hawkw/bosch-bme680", branch = "eliza/
 linux-embedded-hal = { git = "https://github.com/rust-embedded/linux-embedded-hal/" }
 scd4x = { git = "https://github.com/hawkw/scd4x-rs", branch = "eliza/async" }
 sgp30 = { git = "https://github.com/hawkw/sgp30-rs", branch = "eliza/embedded-hal-async" }
+sht4x = { git = "https://github.com/hawkw/sht4x", branch = "eliza/embedded-hal-async" }
 sensirion-i2c = { git = "https://github.com/sensirion/sensirion-i2c-rs", rev = "f7b9f3a81b777bc6e6b2f0acb4c1ef9c57dfa06d" }
