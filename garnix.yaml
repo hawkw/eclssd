@@ -1,0 +1,6 @@
+builds:
+  include:
+  - 'defaultPackage.*'
+  - 'devShell.*'
+  - 'nixosModules.*'
+  - 'checks.*'
