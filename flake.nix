@@ -116,7 +116,6 @@
           services.eclssd = {
             enable = mkEnableOption name;
 
-            enableMdns = mkEnableOption "multicast DNS advertisement for the eclssd service";
 
             i2cdev = mkOption {
               type = path;
@@ -216,8 +215,7 @@
                   Group = name;
                   ExecStart = ''${self.packages.${pkgs.system}.default}/bin/${name} \
                     --i2cdev '${cfg.i2cdev}' \
-                    --listen-addr '${cfg.server.addr}:${toString cfg.server.port}' \
-                    --mdns ${toString cfg.enableMdns}
+                    --listen-addr '${cfg.server.addr}:${toString cfg.server.port}'
                   '';
                   Restart = "on-failure";
                   RestartSec = "5s";
