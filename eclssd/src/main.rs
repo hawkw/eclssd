@@ -36,7 +36,12 @@ struct Args {
     location: Option<String>,
 
     /// enable mDNS advertisement
-    #[clap(long = "mdns", default_value_t = cfg!(feature = "mdns"))]
+    #[clap(
+        long = "mdns",
+        action = clap::ArgAction::Set,
+        value_parser = clap::value_parser!(bool),
+        default_value_t = cfg!(feature = "mdns")
+    )]
     mdns: bool,
 }
 
@@ -61,7 +66,8 @@ async fn main() -> anyhow::Result<()> {
         location = ?args.location,
         version = %env!("CARGO_PKG_VERSION"),
         listen_addr = ?args.listen_addr,
-        "Starting environmental controls and life support systems..."
+        mdns = args.mdns,
+        "starting environmental controls and life support systems..."
     );
     tracing::debug!(
         TEMP_METRICS,

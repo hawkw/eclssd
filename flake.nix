@@ -216,7 +216,8 @@
                   Group = name;
                   ExecStart = ''${self.packages.${pkgs.system}.default}/bin/${name} \
                     --i2cdev '${cfg.i2cdev}' \
-                    --listen-addr '${cfg.server.addr}:${toString cfg.server.port}'
+                    --listen-addr '${cfg.server.addr}:${toString cfg.server.port}' \
+                    --mdns ${toString cfg.enableMdns}
                   '';
                   Restart = "on-failure";
                   RestartSec = "5s";
