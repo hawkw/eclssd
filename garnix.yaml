@@ -1,8 +1,8 @@
 builds:
 - include:
-  - '*.x86_64-linux.*'
-  - '*.aarch64-linux.*'
-  - 'packages.*.eclssd'
-  - 'devShell.*'
-  - 'nixosModules.*'
+  - 'packages.x86_64-linux.eclssd'
+  - 'packages.aarch64-linux.eclssd'
+  - 'devShells.x86_64-linux.*'
+  - 'devShells.aarch64-linux.*'
+  - 'nixosModules.default'
   - 'checks.*'
