@@ -106,74 +106,79 @@
         });
 
       nixosModules.default = { config, lib, pkgs, ... }: with lib; let
-        cfg = config.services.eclssd;
         name = "eclssd";
+        cfg = config.services.${name};
+        cfgCtl = config.programs.eclssctl;
         description = "Environmental Controls and Life Support Systems daemon";
       in
       {
-        options.services.eclssd = with types; {
-          enable = mkEnableOption name;
+        options = with types; {
+          services.eclssd = {
+            enable = mkEnableOption name;
 
-          i2cdev = mkOption {
-            type = path;
-            default = "/dev/i2c-1";
-            example = "/dev/i2c-1";
-            description = "The I2C device to use for communication with sensors.";
-          };
+            enableMdns = mkEnableOption "multicast DNS advertisement for the eclssd service";
 
-          openPorts = mkOption {
-            type = bool;
-            default = false;
-            description = "Whether to open firewall ports for eclssd";
-          };
-
-          # Currently this doesn't do anything but I intend to use it for my
-          # Prometheus scrape config...
-          location = mkOption {
-            type = uniq str;
-            default = "${config.networking.hostname}";
-            example = "bedroom";
-            description = "The physical location of this ECLSS sensor.";
-          };
-
-          logging = {
-            filter = mkOption {
-              type = separatedString ",";
-              default = "info";
-              example = "info,eclss=debug";
-              description = "`tracing-subscriber` log filtering configuration for eclssd";
+            i2cdev = mkOption {
+              type = path;
+              default = "/dev/i2c-1";
+              example = "/dev/i2c-1";
+              description = "The I2C device to use for communication with sensors.";
             };
 
-            timestamps = mkEnableOption "timestamps in log output";
-
-            colors = mkOption {
+            openPorts = mkOption {
               type = bool;
-              default = true;
-              example = false;
-              description = "Whether to enable ANSI color codes in log output.";
+              default = false;
+              description = "Whether to open firewall ports for eclssd";
             };
 
-            format = mkOption {
-              type = enum [ "text" "json" "journald" ];
-              default = "text";
-              example = "json";
-              description = "The log output format.";
-            };
-          };
-
-          server = {
-            addr = mkOption {
+            # Currently this doesn't do anything but I intend to use it for my
+            # Prometheus scrape config...
+            location = mkOption {
               type = uniq str;
-              default = "0.0.0.0";
-              example = "127.0.0.1";
-              description = "The address to bind the server on.";
+              default = "${config.networking.hostname}";
+              example = "bedroom";
+              description = "The physical location of this ECLSS sensor.";
             };
 
-            port = mkOption {
-              type = uniq port;
-              default = 4200;
-              example = 4200;
-              description = "The port to bind the server on.";
+            logging = {
+              filter = mkOption {
+                type = separatedString ",";
+                default = "info";
+                example = "info,eclss=debug";
+                description = "`tracing-subscriber` log filtering configuration for eclssd";
+              };
+
+              timestamps = mkEnableOption "timestamps in log output";
+
+              colors = mkOption {
+                type = bool;
+                default = true;
+                example = false;
+                description = "Whether to enable ANSI color codes in log output.";
+              };
+
+              format = mkOption {
+                type = enum [ "text" "json" "journald" ];
+                default = "text";
+                example = "json";
+                description = "The log output format.";
+              };
+            };
+
+            server = {
+              addr = mkOption {
+                type = uniq str;
+                default = "0.0.0.0";
+                example = "127.0.0.1";
+                description = "The address to bind the server on.";
+              };
+
+              port = mkOption {
+                type = uniq port;
+                default = 4200;
+                example = 4200;
+                description = "The port to bind the server on.";
+              };
             };
           };
         };
@@ -204,6 +209,7 @@
                 environment = {
                   ECLSS_LOG = cfg.logging.filter;
                   ECLSS_LOG_FORMAT = cfg.logging.format;
+                  ECLSS_LOCATION = cfg.location;
                 };
                 serviceConfig = {
                   User = name;

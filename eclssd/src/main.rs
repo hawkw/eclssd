@@ -56,6 +56,13 @@ async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     args.trace.trace_init();
     use eclss::metrics::*;
+
+    tracing::info!(
+        location = ?args.location,
+        version = %env!("CARGO_PKG_VERSION"),
+        listen_addr = ?args.listen_addr,
+        "Starting environmental controls and life support systems..."
+    );
     tracing::debug!(
         TEMP_METRICS,
         CO2_METRICS,
@@ -71,7 +78,7 @@ async fn main() -> anyhow::Result<()> {
 
     let dev = I2cdev::new(&args.i2cdev)
         .with_context(|| format!("failed to open I2C device {}", args.i2cdev.display()))?;
-    tracing::info!(path = "opened I²C device");
+    tracing::info!(path = %args.i2cdev.display(), "opened I²C device");
 
     let eclss: &'static eclss::Eclss<_, 16> =
         Box::leak::<'static>(Box::new(eclss::Eclss::<_, 16>::new(AsyncI2c(dev))));
