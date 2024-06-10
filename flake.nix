@@ -106,17 +106,10 @@
         });
 
       nixosModules.default = { config, lib, pkgs, ... }: with lib; let
-        name = " eclssd ";
+        name = "eclssd";
         cfg = config.services.${name};
         cfgCtl = config.programs.eclssctl;
-        description = "
-                Environmental
-                Controls
-                and
-                Life
-                Support
-                Systems
-                daemon ";
+        description = "Environmental Controls and Life Support Systems daemon";
       in
       {
         options = with types; {
@@ -126,16 +119,9 @@
 
             i2cdev = mkOption {
               type = path;
-              default = " /dev/i2c-1 ";
-              example = " /dev/i2c-1 ";
-              description = "
-                The
-                I2C
-                device
-                to
-                use
-                for
-                communication with sensors.";
+              default = "/dev/i2c-1";
+              example = "/dev/i2c-1";
+              description = "The I2C device to use for communication with sensors.";
             };
 
             openPorts = mkOption {
