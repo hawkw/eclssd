@@ -49,10 +49,10 @@ where
     type Error = EclssError<ScdError<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
-        self.sensor
-            .soft_reset()
-            .await
-            .context("error sending SCD30 soft reset")?;
+        // self.sensor
+        //     .soft_reset()
+        //     .await
+        //     .context("error sending SCD30 soft reset")?;
 
         let (major, minor) = self
             .sensor
@@ -60,6 +60,10 @@ where
             .await
             .context("error reading SCD30 firmware version")?;
         info!("Connected to SCD30 sensor, firmware v{major}.{minor}");
+        self.sensor
+            .stop_continuous_measurement()
+            .await
+            .context("error stopping SCD30 continuous measurement")?;
         self.sensor
             .set_measurement_interval(Self::POLL_INTERVAL.as_secs() as u16)
             .await
