@@ -13,10 +13,14 @@ pub mod pmsa003i;
 #[cfg(feature = "pmsa003i")]
 pub use pmsa003i::Pmsa003i;
 
-#[cfg(any(feature = "scd40", feature = "scd41"))]
-pub mod scd40;
-#[cfg(any(feature = "scd40", feature = "scd41"))]
-pub use scd40::Scd4x;
+#[cfg(any(feature = "scd40", feature = "scd41", feature = "scd30"))]
+pub mod scd;
+#[cfg(feature = "scd30")]
+pub use scd::Scd30;
+#[cfg(feature = "scd40")]
+pub use scd::Scd40;
+#[cfg(feature = "scd41")]
+pub use scd::Scd41;
 
 #[cfg(feature = "sgp30")]
 pub mod sgp30;

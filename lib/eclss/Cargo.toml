@@ -8,11 +8,12 @@ edition = "2021"
 [features]
 bme680 = ["dep:bosch-bme680"]
 serde = ["dep:serde", "tinymetrics/serde"]
-scd40 = ["dep:scd4x"]
-scd41 = ["dep:scd4x", "scd4x/scd41"]
+scd30 = ["dep:libscd", "libscd/scd30"]
+scd40 = ["dep:libscd", "libscd/scd40"]
+scd41 = ["dep:libscd", "libscd/scd41"]
 sgp30 = ["dep:sgp30"]
 sht41 = ["dep:sht4x", "dep:fixed"]
-default = ["pmsa003i", "scd40", "ens160", "sgp30", "bme680"]
+default = ["pmsa003i", "scd40", "scd41", "scd30", "ens160", "sgp30", "bme680"]
 
 [dependencies]
 bosch-bme680 = { workspace = true, optional = true, features = ["embedded-hal-async"] }
@@ -21,9 +22,9 @@ ens160 = { workspace = true, optional = true, features = ["async"] }
 embedded-hal-async = { workspace = true }
 embedded-hal = { workspace = true }
 fixed = { workspace = true, optional = true }
+libscd = { workspace = true, optional = true, features = ["async"] }
 maitake-sync = { workspace = true }
 tinymetrics = { workspace = true, default-features = false }
-scd4x = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async"] }
 sgp30 = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async"] }
 sht4x = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async"] }
 serde = { workspace = true, optional = true }

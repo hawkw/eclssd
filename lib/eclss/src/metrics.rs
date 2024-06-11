@@ -39,8 +39,8 @@ macro_rules! count_features {
     }}
 
 }
-pub const TEMP_METRICS: usize = count_features!("scd40", "scd41", "bme680", "sht41");
-pub const CO2_METRICS: usize = count_features!("scd40", "scd41", "scd30");
+pub const TEMP_METRICS: usize = count_features!("scd30", "scd40", "scd41", "bme680", "sht41");
+pub const CO2_METRICS: usize = count_features!("scd30", "scd40", "scd41");
 pub const ECO2_METRICS: usize = count_features!("sgp30", "bme680", "ens160");
 pub const HUMIDITY_METRICS: usize = count_features!("bme680", "scd40", "scd41", "scd30", "sht41");
 pub const PRESSURE_METRICS: usize = count_features!("bme680");

@@ -350,9 +350,9 @@ dependencies = [
  "embedded-hal-async",
  "ens160",
  "fixed",
+ "libscd",
  "maitake-sync",
  "pmsa003i",
- "scd4x",
  "serde",
  "sgp30",
  "sht4x",
@@ -946,6 +946,15 @@ name = "libc"
 version = "0.2.155"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97b3888a4aecf77e811145cadf6eef5901f4782c53886191b2f693f24761847c"
+
+[[package]]
+name = "libscd"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bd8930c85111530e419f2f9c067c4639bebb1638029b6cbc37b4fa43ba7e918"
+dependencies = [
+ "embedded-hal-async",
+]
 
 [[package]]
 name = "linux-embedded-hal"
@@ -1573,17 +1582,6 @@ name = "ryu"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
-
-[[package]]
-name = "scd4x"
-version = "0.3.0"
-source = "git+https://github.com/hawkw/scd4x-rs?branch=eliza/async#36205f3f627c1edc54618f7d03a59509e340413e"
-dependencies = [
- "embedded-hal",
- "embedded-hal-async",
- "log",
- "sensirion-i2c",
-]
 
 [[package]]
 name = "scoped-tls"

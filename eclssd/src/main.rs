@@ -119,13 +119,41 @@ async fn main() -> anyhow::Result<()> {
         }
     });
 
-    #[cfg(any(feature = "scd41", feature = "scd40"))]
+    #[cfg(feature = "scd41")]
     sensors.spawn({
-        let sensor = sensor::Scd4x::new(eclss, GoodDelay::default());
+        let sensor = sensor::Scd41::new(eclss, GoodDelay::default());
 
         let backoff = backoff.clone();
         async move {
-            tracing::info!("starting SCD4x...");
+            tracing::info!("starting SCD41...");
+            eclss
+                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
+                .await
+                .unwrap()
+        }
+    });
+
+    #[cfg(feature = "scd40")]
+    sensors.spawn({
+        let sensor = sensor::Scd40::new(eclss, GoodDelay::default());
+
+        let backoff = backoff.clone();
+        async move {
+            tracing::info!("starting SCD40...");
+            eclss
+                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
+                .await
+                .unwrap()
+        }
+    });
+
+    #[cfg(feature = "scd30")]
+    sensors.spawn({
+        let sensor = sensor::Scd30::new(eclss, GoodDelay::default());
+
+        let backoff = backoff.clone();
+        async move {
+            tracing::info!("starting SCD30...");
             eclss
                 .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
                 .await
@@ -238,7 +266,7 @@ where
 /// type is not very precise. Use blocking delays for short sleeps in timing
 /// critical sensor wire protocols, and use the async delay for longer sleeps
 /// like in the poll loop.ca
-#[derive(Default)]
+#[derive(Default, Copy, Clone)]
 struct GoodDelay(spin_sleep::SpinSleeper);
 impl GoodDelay {
     const ONE_MS_NANOS: u32 = Duration::from_millis(1).as_nanos() as u32;
