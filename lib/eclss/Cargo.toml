@@ -13,7 +13,7 @@ scd40 = ["dep:libscd", "libscd/scd40"]
 scd41 = ["dep:libscd", "libscd/scd41"]
 sgp30 = ["dep:sgp30"]
 sht41 = ["dep:sht4x", "dep:fixed"]
-default = ["pmsa003i", "scd40", "scd41", "scd30", "ens160", "sgp30", "bme680"]
+default = ["pmsa003i", "scd41", "ens160", "sgp30", "bme680"]
 
 [dependencies]
 bosch-bme680 = { workspace = true, optional = true, features = ["embedded-hal-async"] }
