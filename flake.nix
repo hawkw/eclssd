@@ -65,7 +65,7 @@
               "sgp30-0.4.0" = "sha256-5LRVMFMTxpgQpxrN0sMTiedL4Sw6NBRd86+ZvRP8CVk=";
               "sht4x-0.2.0" = "sha256-LrOvkvNXFNL4EM9aAZfSDFM7zs6M54BGeixtDN5pFCo=";
               "sensirion-i2c-0.3.0" = "sha256-HS6anAmUBBrhlP/kBSv243ArnK3ULK8+0JA8kpe6LAk=";
-              "tinymetrics-0.1.0" = "sha256-7y2pq8qBtOpXO6ii/j+NhwsglxRMLvz8hx7a/w6GRBU=";
+              "tinymetrics-0.1.0" = "sha256-zt7lqq2sYY9k+bMQOepxRamg1CGynFafbxBJDISl1U8=";
               "bosch-bme680-1.0.2" = "sha256-g06bpJP3PgFF9peraYxr3pU5jzZrA8xL/D6+kwr/Nfc=";
             };
           };
