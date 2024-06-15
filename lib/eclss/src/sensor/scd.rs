@@ -1,9 +1,10 @@
 use crate::{
     error::SensorError,
-    metrics::{Gauge, SensorLabel, PRESSURE_METRICS},
+    metrics::{Gauge, PRESSURE_METRICS},
 };
 use core::fmt;
 use core::num::Wrapping;
+use eclss_api::SensorName;
 
 use embedded_hal::i2c;
 
@@ -32,23 +33,23 @@ struct Shared {
     abs_humidity: &'static Gauge,
     co2_ppm: &'static Gauge,
     abs_humidity_interval: usize,
-    pressure: &'static tinymetrics::GaugeFamily<'static, PRESSURE_METRICS, SensorLabel>,
+    pressure: &'static tinymetrics::GaugeFamily<'static, PRESSURE_METRICS, SensorName>,
     polls: Wrapping<usize>,
-    name: &'static str,
+    name: SensorName,
 }
 
 impl Shared {
     fn new<I, const SENSORS: usize>(
         eclss: &'static crate::Eclss<I, { SENSORS }>,
-        name: &'static str,
+        name: SensorName,
     ) -> Self {
         let metrics = &eclss.metrics;
         Self {
-            temp_c: metrics.temp.register(SensorLabel(name)).unwrap(),
-            rel_humidity: metrics.rel_humidity.register(SensorLabel(name)).unwrap(),
-            abs_humidity: metrics.abs_humidity.register(SensorLabel(name)).unwrap(),
-            co2_ppm: metrics.co2.register(SensorLabel(name)).unwrap(),
-            pressure: &metrics.pressure,
+            temp_c: metrics.temp_c.register(name).unwrap(),
+            rel_humidity: metrics.rel_humidity_percent.register(name).unwrap(),
+            abs_humidity: metrics.abs_humidity_grams_m3.register(name).unwrap(),
+            co2_ppm: metrics.co2_ppm.register(name).unwrap(),
+            pressure: &metrics.pressure_hpa,
             polls: Wrapping(0),
             abs_humidity_interval: 1,
             name,

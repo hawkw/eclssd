@@ -1,11 +1,12 @@
 use crate::{
     error::{Context, EclssError, SensorError},
-    metrics::{Gauge, SensorLabel, HUMIDITY_METRICS},
+    metrics::{Gauge, HUMIDITY_METRICS},
     sensor::Sensor,
     SharedBus,
 };
 use core::fmt;
 use core::time::Duration;
+use eclss_api::SensorName;
 
 use embedded_hal_async::{
     delay::DelayNs,
@@ -17,7 +18,7 @@ pub struct Sgp30<I: 'static, D> {
     sensor: AsyncSgp30<&'static SharedBus<I>, D>,
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
-    abs_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorLabel>,
+    abs_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorName>,
     calibration_polls: usize,
 }
 
@@ -39,18 +40,17 @@ where
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
-        const LABEL: SensorLabel = SensorLabel(NAME);
         Self {
             sensor: AsyncSgp30::new(&eclss.i2c, ADAFRUIT_SGP30_ADDR, delay),
-            tvoc: metrics.tvoc.register(LABEL).unwrap(),
-            eco2: metrics.eco2.register(LABEL).unwrap(),
-            abs_humidity: &metrics.abs_humidity,
+            tvoc: metrics.tvoc_ppb.register(NAME).unwrap(),
+            eco2: metrics.eco2_ppm.register(NAME).unwrap(),
+            abs_humidity: &metrics.abs_humidity_grams_m3,
             calibration_polls: 0,
         }
     }
 }
 
-const NAME: &str = "SGP30";
+const NAME: SensorName = SensorName::Sgp30;
 const ADAFRUIT_SGP30_ADDR: u8 = 0x58;
 
 impl<I, D> Sensor for Sgp30<I, D>
@@ -59,7 +59,7 @@ where
     I::Error: core::fmt::Display,
     D: DelayNs,
 {
-    const NAME: &'static str = NAME;
+    const NAME: SensorName = NAME;
     // The SGP30 must be polled every second in order to ensure that the dynamic
     // baseline calibration algorithm works correctly. Performing a measurement
     // takes 12 ms, reading the raw H2 and ETOH signals takes 25 ms, and

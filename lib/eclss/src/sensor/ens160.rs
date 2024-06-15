@@ -1,10 +1,11 @@
 use crate::{
     error::{Context, EclssError, SensorError},
-    metrics::{Gauge, SensorLabel, HUMIDITY_METRICS, TEMP_METRICS},
+    metrics::{Gauge, HUMIDITY_METRICS, TEMP_METRICS},
     sensor::Sensor,
     SharedBus,
 };
 use core::fmt;
+use eclss_api::SensorName;
 
 use embedded_hal::i2c;
 use embedded_hal_async::{delay::DelayNs, i2c::I2c};
@@ -13,8 +14,8 @@ pub struct Ens160<I: 'static, D> {
     sensor: ens160::Ens160<&'static SharedBus<I>>,
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
-    temp: &'static tinymetrics::GaugeFamily<'static, TEMP_METRICS, SensorLabel>,
-    rel_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorLabel>,
+    temp: &'static tinymetrics::GaugeFamily<'static, TEMP_METRICS, SensorName>,
+    rel_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorName>,
     delay: D,
 }
 
@@ -42,19 +43,18 @@ where
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
-        const LABEL: SensorLabel = SensorLabel(NAME);
         Self {
             sensor: ens160::Ens160::new(&eclss.i2c, ADAFRUIT_ENS160_ADDR),
-            tvoc: metrics.tvoc.register(LABEL).unwrap(),
-            eco2: metrics.eco2.register(LABEL).unwrap(),
-            temp: &metrics.temp,
-            rel_humidity: &metrics.rel_humidity,
+            tvoc: metrics.tvoc_ppb.register(NAME).unwrap(),
+            eco2: metrics.eco2_ppm.register(NAME).unwrap(),
+            temp: &metrics.temp_c,
+            rel_humidity: &metrics.rel_humidity_percent,
             delay,
         }
     }
 }
 
-const NAME: &str = "ENS160";
+const NAME: SensorName = SensorName::Ens160;
 
 impl<I, D> Sensor for Ens160<I, D>
 where
@@ -62,7 +62,7 @@ where
     I::Error: core::fmt::Display,
     D: DelayNs,
 {
-    const NAME: &'static str = NAME;
+    const NAME: SensorName = NAME;
     const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
     type Error = EclssError<Ens160Error<I::Error>>;
 

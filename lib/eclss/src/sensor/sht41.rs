@@ -1,10 +1,11 @@
 use crate::{
     error::{Context, EclssError, SensorError},
-    metrics::{Gauge, SensorLabel},
+    metrics::Gauge,
     sensor::Sensor,
     SharedBus,
 };
 use core::{fmt, num::Wrapping, time::Duration};
+use eclss_api::SensorName;
 use embedded_hal_async::{
     delay::DelayNs,
     i2c::{self, I2c},
@@ -26,7 +27,7 @@ pub struct Sht41<I: 'static, D> {
 
 pub struct Sht4xError<E>(sht4x::Error<E>);
 
-const NAME: &str = "SHT41";
+const NAME: SensorName = SensorName::Sht41;
 
 impl<I, D> Sht41<I, D>
 where
@@ -38,16 +39,15 @@ where
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
-        const LABEL: SensorLabel = SensorLabel(NAME);
         // This is the default I2C address of the Adafruit breakout board.
         // TODO(eliza): make this configurable
         let address = sht4x::Address::Address0x44;
 
         Self {
             sensor: AsyncSht4x::new_with_address(&eclss.i2c, address),
-            temp: metrics.temp.register(LABEL).unwrap(),
-            rel_humidity: metrics.rel_humidity.register(LABEL).unwrap(),
-            abs_humidity: metrics.abs_humidity.register(LABEL).unwrap(),
+            temp: metrics.temp_c.register(NAME).unwrap(),
+            rel_humidity: metrics.rel_humidity_percent.register(NAME).unwrap(),
+            abs_humidity: metrics.abs_humidity_grams_m3.register(NAME).unwrap(),
             polls: Wrapping(0),
             abs_humidity_interval: 1,
             precision: Precision::Medium,
@@ -72,7 +72,7 @@ where
     I: I2c + 'static,
     D: DelayNs,
 {
-    const NAME: &'static str = NAME;
+    const NAME: SensorName = NAME;
     const POLL_INTERVAL: Duration = Duration::from_secs(1);
     type Error = EclssError<Sht4xError<I::Error>>;
 

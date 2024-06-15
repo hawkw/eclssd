@@ -79,7 +79,7 @@ impl NodeQuery {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     eprintln!("eclssctl v{}\nEliza Laboratores", env!("CARGO_PKG_VERSION"));
 

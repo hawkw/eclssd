@@ -1,4 +1,4 @@
-use super::{ScdError, Shared};
+use super::{ScdError, SensorName, Shared};
 use crate::{
     error::{Context, EclssError},
     sensor::Sensor,
@@ -37,7 +37,7 @@ where
     }
 }
 
-const NAME: &str = "SCD41";
+const NAME: SensorName = SensorName::Scd41;
 
 impl<I, D> Sensor for Scd41<I, D>
 where
@@ -45,7 +45,7 @@ where
     I::Error: i2c::Error,
     D: DelayNs,
 {
-    const NAME: &'static str = NAME;
+    const NAME: SensorName = NAME;
     const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(5);
     type Error = EclssError<ScdError<I::Error>>;
 

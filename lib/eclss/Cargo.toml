@@ -17,7 +17,7 @@ default = ["pmsa003i", "scd41", "ens160", "sgp30", "bme680"]
 
 [dependencies]
 bosch-bme680 = { workspace = true, optional = true, features = ["embedded-hal-async"] }
-eclss-api = { workspace = true, features = ["fmt"] }
+eclss-api = { workspace = true, features = ["fmt", "tinymetrics"] }
 ens160 = { workspace = true, optional = true, features = ["async"] }
 embedded-hal-async = { workspace = true }
 embedded-hal = { workspace = true }

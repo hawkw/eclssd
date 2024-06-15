@@ -3,7 +3,7 @@ use crate::{
     sensor::{Sensor, SensorError},
     SharedBus,
 };
-
+use eclss_api::SensorName;
 use embedded_hal::i2c;
 use embedded_hal_async::i2c::I2c;
 
@@ -38,14 +38,14 @@ impl<I> Pmsa003i<I> {
     }
 }
 
-const NAME: &str = "PMSA003I";
+const NAME: SensorName = SensorName::Pmsa003i;
 
 impl<I> Sensor for Pmsa003i<I>
 where
     I: I2c + 'static,
     I::Error: core::fmt::Display,
 {
-    const NAME: &'static str = NAME;
+    const NAME: SensorName = NAME;
     const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
     type Error = pmsa003i::SensorError<I::Error>;
     // type InitFuture = impl Future<Output = Result<Self, Self::Error>>;

@@ -39,7 +39,10 @@ reqwest = { version = "0.12.4", default-features = false }
 sgp30 = { version = "0.4.0", default-features = false }
 sht4x = { version = "0.2.0", default-features = false }
 serde = { version = "1.0", default-features = false }
+serde_json = { version = "1.0" }
 spin_sleep = { version = "1.2.0" }
+strum = { version = "0.26", default-features = false }
+
 
 [patch.crates-io]
 bosch-bme680 = { git = "https://github.com/hawkw/bosch-bme680", branch = "eliza/async" }

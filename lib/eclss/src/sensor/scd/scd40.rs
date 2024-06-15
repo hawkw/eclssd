@@ -5,6 +5,7 @@ use crate::{
     SharedBus,
 };
 
+use eclss_api::SensorName;
 use embedded_hal::i2c;
 use embedded_hal_async::{delay::DelayNs, i2c::I2c};
 use libscd::asynchronous::scd4x;
@@ -37,7 +38,7 @@ where
     }
 }
 
-const NAME: &str = "SCD40";
+const NAME: SensorName = SensorName::Scd40;
 
 impl<I, D> Sensor for Scd40<I, D>
 where
@@ -45,7 +46,7 @@ where
     I::Error: i2c::Error,
     D: DelayNs,
 {
-    const NAME: &'static str = NAME;
+    const NAME: SensorName = NAME;
     const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(5);
     type Error = EclssError<ScdError<I::Error>>;
 

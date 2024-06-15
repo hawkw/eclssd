@@ -1,8 +1,67 @@
-#![no_std]
+#![cfg_attr(not(any(feature = "std", test)), no_std)]
 use core::time::Duration;
 use serde::{Deserialize, Serialize};
 
 pub const MAX_SENSORS: usize = 16;
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "fmt", derive(Debug))]
+pub struct Metrics {
+    pub abs_humidity: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub rel_humidity_percent: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub temp_c: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub co2_ppm: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub eco2_ppm: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub tvoc_ppb: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub pressure_hpa: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub sensor_errors: heapless::Vec<Measurement, MAX_SENSORS>,
+}
+
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "fmt", derive(Debug))]
+pub struct Measurement {
+    pub value: f64,
+    pub sensor: SensorName,
+    pub timestamp: Option<u64>,
+}
+
+#[derive(
+    Copy, Clone, PartialEq, Serialize, Deserialize, strum::IntoStaticStr, strum::EnumString,
+)]
+#[cfg_attr(feature = "fmt", derive(Debug, strum::Display))]
+#[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "UPPERCASE", ascii_case_insensitive)]
+#[repr(u8)]
+#[non_exhaustive]
+pub enum SensorName {
+    Bme680,
+    Ens160,
+    Pmsa003i,
+    Scd30,
+    Scd40,
+    Scd41,
+    Sht41,
+    Sgp30,
+    Sen55,
+}
+
+#[cfg(feature = "tinymetrics")]
+impl tinymetrics::FmtLabels for SensorName {
+    fn fmt_labels(&self, f: &mut impl core::fmt::Write) -> core::fmt::Result {
+        write!(f, "sensor=\"{}\"", self)
+    }
+}
+
+// #[derive(Copy, Clone, PartialEq, Serialize, Deserialize)]
+// #[cfg_attr(feature = "fmt", derive(Debug))]
+// #[serde(rename_all = "UPPERCASE")]
+// pub struct RhtMetrics {
+//     pub bme680: Option<f64>,
+//     pub scd30: Option<f64>,
+//     pub scd40: Option<f64>,
+//     pub scd41: Option<f64>,
+//     pub sht41: Option<f64>,
+// }
 
 #[derive(Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "fmt", derive(Debug))]
@@ -15,7 +74,7 @@ pub struct SensorState {
 
 /// Represents the status of an I2C sensor.
 #[derive(Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "fmt", derive(Debug))]
+#[cfg_attr(feature = "fmt", derive(Debug, strum::Display))]
 #[repr(u8)]
 #[non_exhaustive]
 pub enum SensorStatus {
@@ -66,5 +125,43 @@ impl SensorStatus {
             self,
             Self::SensorError | Self::BusError | Self::OtherI2cError
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const SENSOR_KINDS: &[(&str, SensorName)] = &[
+        ("BME680", SensorName::Bme680),
+        ("ENS160", SensorName::Ens160),
+        ("PMSA003I", SensorName::Pmsa003i),
+        ("SCD30", SensorName::Scd30),
+        ("SCD40", SensorName::Scd40),
+        ("SCD41", SensorName::Scd41),
+        ("SHT41", SensorName::Sht41),
+        ("SGP30", SensorName::Sgp30),
+        ("SEN55", SensorName::Sen55),
+    ];
+
+    #[test]
+    fn sensor_name_from_str() {
+        for &(s, name) in SENSOR_KINDS {
+            assert_eq!(s.parse::<SensorName>(), Ok(name));
+        }
+    }
+
+    #[test]
+    fn sensor_name_from_str_lowercase() {
+        for &(s, name) in SENSOR_KINDS {
+            assert_eq!(s.to_ascii_lowercase().parse::<SensorName>(), Ok(name));
+        }
+    }
+
+    #[test]
+    fn sensor_name_display() {
+        for &(s, name) in SENSOR_KINDS {
+            assert_eq!(s, name.to_string());
+        }
     }
 }

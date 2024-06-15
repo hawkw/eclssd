@@ -1,12 +1,13 @@
 use crate::{
     error::{Context, EclssError, SensorError},
-    metrics::{Gauge, SensorLabel},
+    metrics::Gauge,
     sensor::Sensor,
     SharedBus,
 };
 use bosch_bme680::{AsyncBme680, BmeError, MeasurmentData as MeasurementData};
 use core::fmt;
 use core::num::Wrapping;
+use eclss_api::SensorName;
 use embedded_hal_async::{
     delay::DelayNs,
     i2c::{self, Error as _, I2c},
@@ -32,7 +33,6 @@ where
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
-        const LABEL: SensorLabel = SensorLabel(NAME);
 
         // the default I2C address of the Adafruit BME680 breakout board
         // is the "secondary" address, 0x77.
@@ -41,11 +41,11 @@ where
         let ambient_temp = 20;
         Self {
             sensor: AsyncBme680::new(&eclss.i2c, address, delay, ambient_temp),
-            temp: metrics.temp.register(LABEL).unwrap(),
-            pressure: metrics.pressure.register(LABEL).unwrap(),
-            rel_humidity: metrics.rel_humidity.register(LABEL).unwrap(),
-            abs_humidity: metrics.abs_humidity.register(LABEL).unwrap(),
-            gas_resistance: metrics.gas_resistance.register(LABEL).unwrap(),
+            temp: metrics.temp_c.register(NAME).unwrap(),
+            pressure: metrics.pressure_hpa.register(NAME).unwrap(),
+            rel_humidity: metrics.rel_humidity_percent.register(NAME).unwrap(),
+            abs_humidity: metrics.abs_humidity_grams_m3.register(NAME).unwrap(),
+            gas_resistance: metrics.gas_resistance.register(NAME).unwrap(),
             polls: Wrapping(0),
             abs_humidity_interval: 1,
         }
@@ -60,7 +60,7 @@ where
 #[derive(Debug)]
 pub struct Error<E: embedded_hal::i2c::ErrorType>(BmeError<E>);
 
-const NAME: &str = "BME680";
+const NAME: SensorName = SensorName::Bme680;
 
 impl<I, D> Sensor for Bme680<I, D>
 where
@@ -68,7 +68,8 @@ where
     I::Error: core::fmt::Display,
     D: DelayNs,
 {
-    const NAME: &'static str = NAME;
+    const NAME: SensorName = SensorName::Bme680;
+
     const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
     type Error = EclssError<Error<&'static SharedBus<I>>>;
 

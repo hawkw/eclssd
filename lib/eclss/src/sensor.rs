@@ -1,6 +1,7 @@
-use crate::{error::SensorError, metrics, retry, Eclss};
+use crate::{error::SensorError, retry, Eclss};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
+use eclss_api::SensorName;
 use embedded_hal_async::delay::DelayNs;
 mod status;
 
@@ -45,7 +46,7 @@ use tinymetrics::registry::RegistryMap;
 pub trait Sensor {
     type Error: SensorError;
 
-    const NAME: &'static str;
+    const NAME: eclss_api::SensorName;
     const POLL_INTERVAL: Duration;
 
     async fn init(&mut self) -> Result<(), Self::Error>;
@@ -92,7 +93,7 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
         let errors = self
             .metrics
             .sensor_errors
-            .register(metrics::SensorLabel(S::NAME))
+            .register(S::NAME)
             .ok_or("insufficient space in sensor errors metric")?;
 
         while let Err(error) = {
@@ -125,7 +126,7 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
     }
 }
 
-pub type Registry<const N: usize> = RegistryMap<&'static str, State, { N }>;
+pub type Registry<const N: usize> = RegistryMap<SensorName, State, { N }>;
 
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
