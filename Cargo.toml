@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "eclssd",
+    "eclss-displayd",
     "eclssctl",
     "lib/*",
 ]
@@ -16,6 +17,8 @@ eclss-api = { path = "lib/eclss-api" }
 eclss-app = { path = "lib/eclss-app" }
 eclss-axum = { path = "lib/eclss-axum" }
 ens160 = { version = "0.6.1", default-features = false }
+embedded-graphics = "0.8.1"
+embedded-graphics-simulator = "0.6.0"
 embedded-hal = { version = "1" }
 embedded-hal-async = { version = "1" }
 fixed = "1.20.0"

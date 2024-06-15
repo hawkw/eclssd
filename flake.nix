@@ -53,6 +53,10 @@
         configuredRustPlatform.buildRustPackage {
           inherit src pname;
           inherit (cargoTOML.package) version;
+          buildInputs = with pkgs; [
+            SDL2
+            SDL2.dev
+          ];
 
           cargoLock = {
             lockFile = ./Cargo.lock;

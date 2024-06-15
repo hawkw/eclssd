@@ -7,7 +7,7 @@ pub const MAX_SENSORS: usize = 16;
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "fmt", derive(Debug))]
 pub struct Metrics {
-    pub abs_humidity: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub abs_humidity_grams_m3: heapless::Vec<Measurement, MAX_SENSORS>,
     pub rel_humidity_percent: heapless::Vec<Measurement, MAX_SENSORS>,
     pub temp_c: heapless::Vec<Measurement, MAX_SENSORS>,
     pub co2_ppm: heapless::Vec<Measurement, MAX_SENSORS>,
