@@ -43,17 +43,20 @@ macro_rules! count_features {
     }}
 
 }
-pub const TEMP_METRICS: usize = count_features!("scd30", "scd40", "scd41", "bme680", "sht41");
+pub const TEMP_METRICS: usize =
+    count_features!("scd30", "scd40", "scd41", "bme680", "sht41", "sen55");
 pub const CO2_METRICS: usize = count_features!("scd30", "scd40", "scd41");
 pub const ECO2_METRICS: usize = count_features!("sgp30", "bme680", "ens160");
-pub const HUMIDITY_METRICS: usize = count_features!("bme680", "scd40", "scd41", "scd30", "sht41");
+pub const HUMIDITY_METRICS: usize =
+    count_features!("bme680", "scd40", "scd41", "scd30", "sht41", "sen55");
 pub const PRESSURE_METRICS: usize = count_features!("bme680");
 pub const VOC_RESISTANCE_METRICS: usize = count_features!("bme680");
 pub const TVOC_METRICS: usize = count_features!("sgp30", "bme680", "ens160");
 pub const PM_CONC_METRICS: usize = count_features!("pmsa003i") * 3;
 pub const PM_COUNT_METRICS: usize = count_features!("pmsa003i") * 6;
-pub const SENSORS: usize =
-    count_features!("scd30", "scd40", "scd41", "sgp30", "bme680", "ens160", "sht41", "pmsa003i");
+pub const SENSORS: usize = count_features!(
+    "scd30", "scd40", "scd41", "sen55", "sgp30", "bme680", "ens160", "sht41", "pmsa003i"
+);
 
 #[derive(Debug, Eq, PartialEq, serde::Serialize)]
 #[serde(transparent)]

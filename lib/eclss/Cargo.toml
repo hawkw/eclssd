@@ -28,7 +28,7 @@ maitake-sync = { workspace = true }
 tinymetrics = { workspace = true, default-features = false }
 sgp30 = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async"] }
 sht4x = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async"] }
-sensor-sen5x = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async"] }
+sensor-sen5x = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async", "fmt"] }
 serde = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true, default-features = false, features = ["attributes"] }
 pmsa003i = { workspace = true, optional = true, features = ["embedded-hal-async"] }
