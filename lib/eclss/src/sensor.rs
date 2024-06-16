@@ -23,6 +23,11 @@ pub use scd::Scd40;
 #[cfg(feature = "scd41")]
 pub use scd::Scd41;
 
+#[cfg(feature = "sen55")]
+pub mod sen55;
+#[cfg(feature = "sen55")]
+pub use sen55::Sen55;
+
 #[cfg(feature = "sgp30")]
 pub mod sgp30;
 #[cfg(feature = "sgp30")]

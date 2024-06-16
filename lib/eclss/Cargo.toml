@@ -11,9 +11,10 @@ serde = ["dep:serde", "tinymetrics/serde"]
 scd30 = ["dep:libscd", "libscd/scd30"]
 scd40 = ["dep:libscd", "libscd/scd40"]
 scd41 = ["dep:libscd", "libscd/scd41"]
+sen55 = ["dep:sensor-sen5x"]
 sgp30 = ["dep:sgp30"]
 sht41 = ["dep:sht4x", "dep:fixed"]
-default = ["pmsa003i", "scd41", "ens160", "sgp30", "bme680"]
+default = ["pmsa003i", "scd41", "sen55", "ens160", "sgp30", "bme680"]
 
 [dependencies]
 bosch-bme680 = { workspace = true, optional = true, features = ["embedded-hal-async"] }
@@ -27,6 +28,7 @@ maitake-sync = { workspace = true }
 tinymetrics = { workspace = true, default-features = false }
 sgp30 = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async"] }
 sht4x = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async"] }
+sensor-sen5x = { workspace = true, optional = true, default-features = false, features = ["embedded-hal-async"] }
 serde = { workspace = true, optional = true }
 tracing = { workspace = true, optional = true, default-features = false, features = ["attributes"] }
 pmsa003i = { workspace = true, optional = true, features = ["embedded-hal-async"] }

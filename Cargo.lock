@@ -415,6 +415,7 @@ dependencies = [
  "libscd",
  "maitake-sync",
  "pmsa003i",
+ "sensor-sen5x",
  "serde",
  "sgp30",
  "sht4x",
@@ -1924,6 +1925,17 @@ source = "git+https://github.com/sensirion/sensirion-i2c-rs?rev=f7b9f3a81b777bc6
 dependencies = [
  "embedded-hal",
  "embedded-hal-async",
+]
+
+[[package]]
+name = "sensor-sen5x"
+version = "0.1.0"
+source = "git+https://github.com/hawkw/sen5x-rs?branch=main#8a2df231cb420faeb86ed85062e5d323343b18f2"
+dependencies = [
+ "bitflags 2.5.0",
+ "embedded-hal",
+ "embedded-hal-async",
+ "sensirion-i2c",
 ]
 
 [[package]]

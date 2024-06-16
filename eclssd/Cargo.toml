@@ -6,13 +6,14 @@ readme = "README.md"
 license = "MIT"
 
 [features]
-default = ["bme680", "scd41", "scd30", "sgp30", "sht41", "pmsa003i", "ens160", "mdns"]
+default = ["bme680", "scd41", "sen55", "sgp30", "sht41", "pmsa003i", "ens160", "mdns"]
 bme680 = ["eclss/bme680"]
 scd30 = ["eclss/scd30"]
 scd40 = ["eclss/scd40"]
 scd41 = ["eclss/scd41"]
 sgp30 = ["eclss/sgp30"]
 sht41 = ["eclss/sht41"]
+sen55 = ["eclss/sen55"]
 pmsa003i = ["eclss/pmsa003i"]
 ens160 = ["eclss/ens160"]
 mdns = ["mdns-sd", "hostname", "local-ip-address"]
