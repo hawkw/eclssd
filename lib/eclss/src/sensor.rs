@@ -105,7 +105,7 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
             status.set_status(Status::Initializing);
             sensor.init().await
         } {
-            warn!(%error, "failed to initialize {}, retrying...", S::NAME);
+            warn!(%error, "failed to initialize {}: {error}", S::NAME);
             status.set_status(error.as_status());
             errors.fetch_add(1);
             backoff.wait(&mut delay).await;
@@ -120,7 +120,7 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
                 warn!(
                     %error,
                     retry_in = ?backoff.current(),
-                    "failed to poll {}, retrying...", S::NAME
+                    "failed to poll {}, retrying: {error}", S::NAME
                 );
                 status.set_status(error.as_status());
                 errors.fetch_add(1);
