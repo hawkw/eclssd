@@ -42,7 +42,7 @@ const NAME: SensorName = SensorName::Scd41;
 impl<I, D> Sensor for Scd41<I, D>
 where
     I: I2c + 'static,
-    I::Error: i2c::Error,
+    I::Error: i2c::Error + core::fmt::Debug,
     D: DelayNs,
 {
     const NAME: SensorName = NAME;
@@ -50,10 +50,10 @@ where
     type Error = EclssError<ScdError<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
-        self.sensor
-            .wake_up()
-            .await
-            .context("error waking up SCD41")?;
+        match self.sensor.wake_up().await {
+            Ok(()) => tracing::debug!("Woke up SCD41"),
+            Err(error) => tracing::warn!(?error, "error waking up SCD41: {error:?}"),
+        }
 
         self.sensor
             .stop_periodic_measurement()
