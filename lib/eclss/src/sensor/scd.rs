@@ -10,7 +10,7 @@ use embedded_hal::i2c;
 
 #[cfg(feature = "scd30")]
 mod scd30;
-#[cfg(feature = "scd41")]
+#[cfg(feature = "scd30")]
 pub use self::scd30::Scd30;
 #[cfg(feature = "scd40")]
 mod scd40;
