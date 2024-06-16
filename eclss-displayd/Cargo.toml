@@ -15,6 +15,7 @@ eclss-api = { workspace = true }
 eclss-app = { workspace = true }
 embedded-graphics = { workspace = true }
 embedded-graphics-simulator = { workspace = true, optional = true, features = ["with-sdl"]}
+profont = { workspace = true }
 humantime = { workspace = true }
 reqwest = { workspace = true, default-features = false, features = ["charset", "rustls-tls", "http2", "json"] }
 serde_json = { workspace = true }

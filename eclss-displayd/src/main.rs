@@ -1,12 +1,10 @@
 use anyhow::Context;
 use clap::Parser;
-use eclss_app::{TraceArgs, TraceFormat};
+use eclss_app::TraceArgs;
 use embedded_graphics::geometry::Point;
-use embedded_graphics::mock_display::MockDisplay;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::prelude::*;
-use embedded_graphics::text::Text;
-use embedded_graphics::Drawable;
+use embedded_graphics::text::renderer::TextRenderer;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -90,20 +88,17 @@ async fn display_window(client: Client) -> anyhow::Result<()> {
 
 #[cfg(feature = "embedded-graphics-simulator")]
 async fn display_window(mut client: Client) -> anyhow::Result<()> {
-    use embedded_graphics::{
-        mono_font::{ascii::FONT_6X10, MonoTextStyle},
-        pixelcolor::BinaryColor,
-    };
+    use embedded_graphics::{mono_font::MonoTextStyle, pixelcolor::BinaryColor};
     use embedded_graphics_simulator::{
-        BinaryColorTheme, OutputSettings, OutputSettingsBuilder, SimulatorDisplay, Window,
+        BinaryColorTheme, OutputSettingsBuilder, SimulatorDisplay, Window,
     };
-    let mut display: SimulatorDisplay<BinaryColor> = SimulatorDisplay::new(Size::new(128, 64));
+    let mut display: SimulatorDisplay<BinaryColor> = SimulatorDisplay::new(Size::new(296, 128));
 
     let output_settings = OutputSettingsBuilder::new()
         .theme(BinaryColorTheme::OledBlue)
         .build();
     let mut window = Window::new("eclss-displayd", &output_settings);
-    let style = MonoTextStyle::new(&FONT_6X10, BinaryColor::On);
+    let style = MonoTextStyle::new(&profont::PROFONT_12_POINT, BinaryColor::On);
 
     loop {
         let metrics = client.fetch().await?;
@@ -122,28 +117,46 @@ where
     D::Error: core::fmt::Debug,
 {
     use embedded_graphics::text::{Alignment, LineHeight, Text, TextStyleBuilder};
-    const OFFSET: i32 = 5;
+    const OFFSET: i32 = 2;
+    const TEMPERATURE: &str = "Temperature";
+    const WIDTH: usize = TEMPERATURE.len();
+
     let text_style = TextStyleBuilder::new()
         .alignment(Alignment::Left)
         .baseline(embedded_graphics::text::Baseline::Top)
-        .line_height(LineHeight::Percent(150))
+        .line_height(LineHeight::Percent(110))
         .build();
     let temp = mean(&metrics.temp_c)
-        .map(|t| format!("Temperature: {:.2} C", t))
-        .unwrap_or_else(|| String::from("Temperature: ???"));
-    let rel_humidity = mean(&metrics.rel_humidity_percent)
-        .map(|h| format!("Rel. Humidity: {h:.2}%"))
-        .unwrap_or_else(|| String::from("Rel. Humidity: ???"));
-    let pt = Text::with_text_style(&temp, Point::new(0, 0), char_style, text_style)
+        .map(|t| format!("{TEMPERATURE:>WIDTH$}: {t:.2} °C\n"))
+        .unwrap_or_else(|| format!("{TEMPERATURE:>WIDTH$}: ??? °C\n"));
+
+    let pt = Text::with_text_style(&temp, Point::new(OFFSET, OFFSET), char_style, text_style)
         .draw(target)
         .map_err(|e| anyhow::anyhow!("error drawing temperature: {e:?}"))?;
-    let pt2 = Point {
-        x: OFFSET,
-        y: dbg!(pt).y + OFFSET,
-    };
-    Text::with_text_style(&rel_humidity, pt2, char_style, text_style)
+
+    let rel_humidity = mean(&metrics.rel_humidity_percent)
+        .map(|h| format!("{:>WIDTH$}: {h:.2}%\n", "Humidity"))
+        .unwrap_or_else(|| format!("{:>WIDTH$}: ???%\n", "Humidity"));
+
+    let pt = Text::with_text_style(&rel_humidity, pt, char_style, text_style)
         .draw(target)
         .map_err(|e| anyhow::anyhow!("error drawing humidity: {e:?}"))?;
+
+    let co2_ppm = mean(&metrics.co2_ppm)
+        .map(|c| format!("{:>WIDTH$}: {c:.2} ppm\n", "CO2"))
+        .unwrap_or_else(|| format!("{:>WIDTH$}: ??? ppm\n", "CO2"));
+
+    let pt = Text::with_text_style(&co2_ppm, pt, char_style, text_style)
+        .draw(target)
+        .map_err(|e| anyhow::anyhow!("error drawing CO2: {e:?}"))?;
+
+    let tvoc_ppb = mean(&metrics.tvoc_ppb)
+        .map(|c| format!("{:>WIDTH$}: {c:.2} ppb\n", "tVOC"))
+        .unwrap_or_else(|| format!("{:>WIDTH$}: ??? ppb\n", "tVOC"));
+
+    Text::with_text_style(&tvoc_ppb, pt, char_style, text_style)
+        .draw(target)
+        .map_err(|e| anyhow::anyhow!("error drawing tVOC: {e:?}"))?;
     Ok(())
 }
 
