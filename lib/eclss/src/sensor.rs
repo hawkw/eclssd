@@ -74,6 +74,7 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
         mut sensor: S,
         retry_backoff: impl Into<retry::ExpBackoff>,
         mut delay: impl DelayNs,
+        max_init_attempts: Option<usize>,
     ) -> Result<(), &'static str>
     where
         S: Sensor,
@@ -101,13 +102,28 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
             .register(S::NAME)
             .ok_or("insufficient space in sensor errors metric")?;
 
+        let mut attempts = 0;
         while let Err(error) = {
             status.set_status(Status::Initializing);
             sensor.init().await
         } {
-            warn!(%error, "failed to initialize {}: {error}", S::NAME);
             status.set_status(error.as_status());
             errors.fetch_add(1);
+            attempts += 1;
+            warn!(
+                %error,
+                "failed to initialize {} (attempt {attempts}): {error}",
+                S::NAME
+            );
+
+            if Some(attempts) == max_init_attempts {
+                error!(
+                    "Giving up on {} after {attempts} failed initialization attempts!",
+                    S::NAME
+                );
+                return Err("failed to initialize sensor after maximum attempts");
+            }
+
             backoff.wait(&mut delay).await;
         }
 

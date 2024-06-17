@@ -18,3 +18,10 @@ macro_rules! warn {
         tracing::warn!($($arg)*)
     };
 }
+
+macro_rules! error {
+    ($($arg:tt)*) => {
+        #[cfg(feature = "tracing")]
+        tracing::error!($($arg)*)
+    };
+}
