@@ -1932,7 +1932,7 @@ dependencies = [
 [[package]]
 name = "sensor-sen5x"
 version = "0.1.0"
-source = "git+https://github.com/hawkw/sen5x-rs?branch=main#3fece34db716ed5403990058721467593d86fa16"
+source = "git+https://github.com/hawkw/sen5x-rs?branch=main#7b6da8b215c3d832a96d45b67fed1303664462a3"
 dependencies = [
  "bitflags 2.5.0",
  "embedded-hal",
