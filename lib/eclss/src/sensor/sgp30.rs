@@ -104,7 +104,7 @@ where
                 Err(error) => {
                     warn!(
                         ?error,
-                        "error converting absolute humidity {abs_h} to SGP30 format"
+                        "error converting absolute humidity {abs_h} to {NAME} format"
                     );
                     None
                 }
@@ -144,17 +144,17 @@ where
             self.tvoc.set_value(tvoc_ppb.into());
             self.eco2.set_value(co2eq_ppm.into());
         }
-        tracing::debug!("CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
+        tracing::debug!("{NAME}: CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
 
         let sgp30::RawSignals { h2, ethanol } = self
             .sensor
             .measure_raw_signals()
             .await
             .context("error reading SGP30 raw signals")?;
-        tracing::debug!("H₂: {h2}, Ethanol: {ethanol}");
+        tracing::debug!("{NAME}: H₂: {h2}, Ethanol: {ethanol}");
 
         if let Some(baseline) = baseline {
-            tracing::trace!("SGP30 baseline: {baseline:?}");
+            tracing::trace!("{NAME}: baseline: {baseline:?}");
         }
 
         Ok(())

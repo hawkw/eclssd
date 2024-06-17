@@ -97,7 +97,7 @@ where
         let voc = measurement.voc_index();
         let nox_index = measurement.nox_index();
         debug!(
-            "SEN5x: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, VOC: {voc:?}, NOx: {nox_index:?}"
+            "{NAME}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, VOC: {voc:?}, NOx: {nox_index:?}"
         );
 
         if ready {
@@ -111,7 +111,7 @@ where
                 if self.polls.0 % self.abs_humidity_interval == 0 {
                     let abs_humidity = super::absolute_humidity(temp, humidity);
                     self.abs_humidity.set_value(abs_humidity.into());
-                    debug!("SEN5x: Absolute humidity: {abs_humidity} g/m³",);
+                    debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³",);
                 }
 
                 self.polls += 1;

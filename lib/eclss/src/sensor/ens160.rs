@@ -72,14 +72,14 @@ where
             .part_id()
             .await
             .context("error reading ENS160 part ID")?;
-        info!("ENS160 part ID: 0x{part_id:04x}");
+        info!("{NAME} part ID: 0x{part_id:04x}");
 
         let (min, minor, patch) = self
             .sensor
             .firmware_version()
             .await
             .context("error reading ENS160 firmware version")?;
-        info!("ENS160 firmware version: v{min}.{minor}.{patch}");
+        info!("{NAME} firmware version: v{min}.{minor}.{patch}");
 
         self.sensor
             .operational()
@@ -104,13 +104,13 @@ where
             };
             match validity {
                 ens160::Validity::NormalOperation => {
-                    info!("ENS160 is ready");
+                    info!("{NAME} is ready");
                     return Ok(());
                 }
                 ens160::Validity::WarmupPhase => {
                     let warmup_secs = 30 * warmup;
                     info!(
-                        "ENS160 has been warming up for {warmup_secs} seconds \
+                        "{NAME} has been warming up for {warmup_secs} seconds \
                         ({} remaining)",
                         180usize.saturating_sub(warmup_secs)
                     );
@@ -120,7 +120,7 @@ where
                 ens160::Validity::InitStartupPhase => {
                     let setup_mins = 2 * setup;
                     info!(
-                        "ENS160 has been performing initial setup for \
+                        "{NAME} has been performing initial setup for \
                         {setup_mins} minutes ({} remaining)",
                         60usize.saturating_sub(setup_mins),
                     );
@@ -155,7 +155,7 @@ where
             let integer = avg_rh.trunc() as i16 * 100;
             let fractional = (avg_rh.fract() * 100.0) as i16;
             let temp = integer + fractional;
-            debug!("setting ENS160 relative humidity compensation to {temp} ({avg_rh}%)");
+            debug!("setting {NAME} relative humidity compensation to {temp} ({avg_rh}%)");
             self.sensor
                 .set_temp(temp)
                 .await
@@ -189,7 +189,7 @@ where
             .tvoc()
             .await
             .context("error reading ENS160 tVOC")?;
-        debug!("ENS160 TVOC: {tvoc} ppb",);
+        debug!("{NAME}: TVOC: {tvoc} ppb",);
         self.tvoc.set_value(tvoc.into());
 
         let eco2 = self
@@ -198,7 +198,7 @@ where
             .await
             .context("error reading ENS160 eCO2")?;
         let eco2 = *eco2;
-        debug!("ENS160 eCO2: {eco2} ppm");
+        debug!("{NAME}: CO₂eq: {eco2} ppm");
         self.eco2.set_value(eco2.into());
 
         Ok(())

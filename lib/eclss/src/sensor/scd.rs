@@ -75,7 +75,7 @@ impl Shared {
 
     fn record_measurement(&mut self, co2: u16, temperature: f32, humidity: f32) {
         debug!(
-            "{}: CO2: {co2} ppm, Temp: {temperature}°C, Humidity: {humidity}%",
+            "{}: CO₂: {co2} ppm, Temp: {temperature}°C, Humidity: {humidity}%",
             self.name
         );
         self.co2_ppm.set_value(co2.into());

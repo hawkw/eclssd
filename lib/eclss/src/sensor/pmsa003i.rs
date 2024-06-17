@@ -62,8 +62,8 @@ where
             sensor_version: _,
         } = self.sensor.read_async().await?;
 
-        debug!("particulate concentrations:\n{concentrations:>#3}");
-        debug!("particulates {counts:>#3}");
+        debug!("{NAME}: particulate concentrations:\n{concentrations:>#3}");
+        debug!("{NAME}: particulates {counts:>#3}");
 
         macro_rules! set_metrics {
             ($src:ident => $($name:ident),+) => {
