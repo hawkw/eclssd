@@ -24,6 +24,7 @@ clap = { workspace = true, features = ["derive", "env"] }
 eclss = { workspace = true, features = ["tracing", "serde"] }
 eclss-app = { workspace = true, features = ["journald"] }
 eclss-axum = { workspace = true }
+eclss-api = { workspace = true, features = ["clap", "std"] }
 embedded-hal = { workspace = true }
 embedded-hal-async = { workspace = true }
 humantime = { workspace = true }

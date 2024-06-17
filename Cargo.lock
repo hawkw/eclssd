@@ -427,6 +427,7 @@ dependencies = [
 name = "eclss-api"
 version = "0.1.0"
 dependencies = [
+ "clap",
  "heapless",
  "serde",
  "strum",
@@ -495,6 +496,7 @@ dependencies = [
  "anyhow",
  "clap",
  "eclss",
+ "eclss-api",
  "eclss-app",
  "eclss-axum",
  "embedded-hal",

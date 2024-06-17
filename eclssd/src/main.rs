@@ -1,6 +1,8 @@
 use anyhow::Context;
 use clap::Parser;
-use eclss::sensor::{self};
+use eclss::retry::ExpBackoff;
+use eclss::sensor::{self, SensorName};
+use eclss::Eclss;
 use eclss_app::TraceArgs;
 use embedded_hal::i2c::{self, I2c as BlockingI2c};
 use embedded_hal_async::{delay::DelayNs, i2c::I2c};
@@ -43,6 +45,13 @@ struct Args {
         default_value_t = cfg!(feature = "mdns")
     )]
     mdns: bool,
+
+    /// List of sensors to enable.
+    ///
+    /// If no sensors are provided here, the ECLSS daemon will attempt to
+    /// connect to all sensors that are enabled at compile time.
+    #[clap(long = "sensor", short, default_values_t = DEFAULT_SENSORS)]
+    sensors: Vec<SensorName>,
 }
 
 #[derive(Debug, Parser)]
@@ -105,138 +114,120 @@ async fn main() -> anyhow::Result<()> {
         anyhow::bail!("mDNS advertisement requires the `mdns` feature to be enabled");
     }
 
-    let mut sensors = tokio::task::JoinSet::new();
-    #[cfg(feature = "pmsa003i")]
-    sensors.spawn({
-        let sensor = sensor::Pmsa003i::new(eclss);
-        let backoff = backoff.clone();
-        async move {
-            tracing::info!("starting PMSA003I...");
-            eclss
-                .run_sensor(sensor, backoff, GoodDelay::default())
-                .await
-                .unwrap()
-        }
-    });
-
-    #[cfg(feature = "scd41")]
-    sensors.spawn({
-        let sensor = sensor::Scd41::new(eclss, GoodDelay::default());
-
-        let backoff = backoff.clone();
-        async move {
-            tracing::info!("starting SCD41...");
-            eclss
-                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
-                .await
-                .unwrap()
-        }
-    });
-
-    #[cfg(feature = "scd40")]
-    sensors.spawn({
-        let sensor = sensor::Scd40::new(eclss, GoodDelay::default());
-
-        let backoff = backoff.clone();
-        async move {
-            tracing::info!("starting SCD40...");
-            eclss
-                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
-                .await
-                .unwrap()
-        }
-    });
-
-    #[cfg(feature = "scd30")]
-    sensors.spawn({
-        let sensor = sensor::Scd30::new(eclss, GoodDelay::default());
-
-        let backoff = backoff.clone();
-        async move {
-            tracing::info!("starting SCD30...");
-            eclss
-                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
-                .await
-                .unwrap()
-        }
-    });
-
-    #[cfg(feature = "sen55")]
-    sensors.spawn({
-        let sensor = sensor::Sen55::new(eclss, GoodDelay::default());
-
-        let backoff = backoff.clone();
-        async move {
-            tracing::info!("starting SEN55...");
-            eclss
-                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
-                .await
-                .unwrap()
-        }
-    });
-
-    #[cfg(feature = "sgp30")]
-    sensors.spawn({
-        let sensor = sensor::Sgp30::new(eclss, GoodDelay::default());
-
-        let backoff = backoff.clone();
-        async move {
-            tracing::info!("starting SGP30...");
-            eclss
-                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
-                .await
-                .unwrap()
-        }
-    });
-
-    #[cfg(feature = "sht41")]
-    sensors.spawn({
-        let sensor = sensor::Sht41::new(eclss, GoodDelay::default());
-
-        let backoff = backoff.clone();
-        async move {
-            tracing::info!("starting SHT41...");
-            eclss
-                .run_sensor(sensor, backoff.clone(), linux_embedded_hal::Delay)
-                .await
-                .unwrap()
-        }
-    });
-
-    #[cfg(feature = "ens160")]
-    sensors.spawn({
-        let sensor = sensor::Ens160::new(eclss, GoodDelay::default());
-
-        let backoff = backoff.clone();
-        async move {
-            tracing::info!("starting ENS160...");
-            eclss
-                .run_sensor(sensor, backoff.clone(), GoodDelay::default())
-                .await
-                .unwrap()
-        }
-    });
-
-    #[cfg(feature = "bme680")]
-    sensors.spawn({
-        let sensor = sensor::Bme680::new(eclss, GoodDelay::default());
-        let backoff = backoff.clone();
-        async move {
-            tracing::info!("starting BME680...");
-            eclss
-                .run_sensor(sensor, backoff, GoodDelay::default())
-                .await
-                .unwrap()
-        }
-    });
-
-    while let Some(join) = sensors.join_next().await {
-        join.unwrap();
+    let mut sensor_tasks = tokio::task::JoinSet::new();
+    tracing::info!("Enabling the following sensors: {:?}", args.sensors);
+    for sensor in args.sensors {
+        sensor_tasks.spawn(run_sensor(eclss, sensor, backoff.clone()));
     }
 
-    server.await.unwrap();
+    while let Some(join) = sensor_tasks.join_next().await {
+        join.context("a sensor task panicked")??;
+    }
+
+    server.await.context("HTTP server panicked")?;
 
     Ok(())
+}
+
+const DEFAULT_SENSORS: &[SensorName] = &[
+    #[cfg(feature = "pmsa003i")]
+    SensorName::Pmsa003i,
+    #[cfg(feature = "scd41")]
+    SensorName::Scd41,
+    #[cfg(feature = "scd30")]
+    SensorName::Scd30,
+    #[cfg(feature = "sen55")]
+    SensorName::Sen55,
+    #[cfg(feature = "sgp30")]
+    SensorName::Sgp30,
+    #[cfg(feature = "sht41")]
+    SensorName::Sht41,
+    #[cfg(feature = "ens160")]
+    SensorName::Ens160,
+    #[cfg(feature = "bme680")]
+    SensorName::Bme680,
+];
+
+async fn run_sensor(
+    eclss: &'static Eclss<AsyncI2c<I2cdev>, 16>,
+    name: SensorName,
+    backoff: ExpBackoff,
+) -> anyhow::Result<()> {
+    match name {
+        #[cfg(feature = "pmsa003i")]
+        SensorName::Pmsa003i => {
+            let sensor = sensor::Pmsa003i::new(eclss);
+            eclss
+                .run_sensor(sensor, backoff, GoodDelay::default())
+                .await
+                .map_err(|e| anyhow::anyhow!("error running {name}: {e}"))
+        }
+        #[cfg(feature = "scd41")]
+        SensorName::Scd41 => {
+            let sensor = sensor::Scd41::new(eclss, GoodDelay::default());
+            eclss
+                .run_sensor(sensor, backoff, GoodDelay::default())
+                .await
+                .map_err(|e| anyhow::anyhow!("error running {name}: {e}"))
+        }
+        #[cfg(feature = "scd40")]
+        SensorName::Scd40 => {
+            let sensor = sensor::Scd40::new(eclss, GoodDelay::default());
+            eclss
+                .run_sensor(sensor, backoff, GoodDelay::default())
+                .await
+                .map_err(|e| anyhow::anyhow!("error running {name}: {e}"))
+        }
+        #[cfg(feature = "scd30")]
+        SensorName::Scd30 => {
+            let sensor = sensor::Scd30::new(eclss, GoodDelay::default());
+            eclss
+                .run_sensor(sensor, backoff, GoodDelay::default())
+                .await
+                .map_err(|e| anyhow::anyhow!("error running {name}: {e}"))
+        }
+        #[cfg(feature = "sen55")]
+        SensorName::Sen55 => {
+            let sensor = sensor::Sen55::new(eclss, GoodDelay::default());
+            eclss
+                .run_sensor(sensor, backoff, GoodDelay::default())
+                .await
+                .map_err(|e| anyhow::anyhow!("error running {name}: {e}"))
+        }
+        #[cfg(feature = "sgp30")]
+        SensorName::Sgp30 => {
+            let sensor = sensor::Sgp30::new(eclss, GoodDelay::default());
+            eclss
+                .run_sensor(sensor, backoff, GoodDelay::default())
+                .await
+                .map_err(|e| anyhow::anyhow!("error running {name}: {e}"))
+        }
+        #[cfg(feature = "sht41")]
+        SensorName::Sht41 => {
+            let sensor = sensor::Sht41::new(eclss, GoodDelay::default());
+            eclss
+                .run_sensor(sensor, backoff, GoodDelay::default())
+                .await
+                .map_err(|e| anyhow::anyhow!("error running {name}: {e}"))
+        }
+        #[cfg(feature = "ens160")]
+        SensorName::Ens160 => {
+            let sensor = sensor::Ens160::new(eclss, GoodDelay::default());
+            eclss
+                .run_sensor(sensor, backoff, GoodDelay::default())
+                .await
+                .map_err(|e| anyhow::anyhow!("error running {name}: {e}"))
+        }
+        #[cfg(feature = "bme680")]
+        SensorName::Bme680 => {
+            let sensor = sensor::Bme680::new(eclss, GoodDelay::default());
+            eclss
+                .run_sensor(sensor, backoff, GoodDelay::default())
+                .await
+                .map_err(|e| anyhow::anyhow!("error running {name}: {e}"))
+        }
+        sensor => anyhow::bail!("sensor {sensor} not enabled at compile time!"),
+    }
 }
 
 impl RetryArgs {

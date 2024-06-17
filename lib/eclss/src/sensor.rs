@@ -1,7 +1,7 @@
 use crate::{error::SensorError, retry, Eclss};
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
-use eclss_api::SensorName;
+pub use eclss_api::SensorName;
 use embedded_hal_async::delay::DelayNs;
 mod status;
 

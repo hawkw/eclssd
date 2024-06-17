@@ -29,6 +29,8 @@ pub struct Measurement {
     Copy, Clone, PartialEq, Serialize, Deserialize, strum::IntoStaticStr, strum::EnumString,
 )]
 #[cfg_attr(feature = "fmt", derive(Debug, strum::Display))]
+#[cfg_attr(feature = "clap", derive(clap::ValueEnum))]
+#[cfg_attr(feature = "clap", clap(rename_all = "UPPERCASE"))]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE", ascii_case_insensitive)]
 #[repr(u8)]
