@@ -4,7 +4,6 @@ use eclss_app::TraceArgs;
 use embedded_graphics::geometry::Point;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::prelude::*;
-use embedded_graphics::text::renderer::TextRenderer;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -81,12 +80,12 @@ async fn display_terminal(mut client: Client) -> anyhow::Result<()> {
     }
 }
 
-#[cfg(not(feature = "embedded-graphics-simulator"))]
+#[cfg(not(feature = "window"))]
 async fn display_window(client: Client) -> anyhow::Result<()> {
-    anyhow::bail!("windowed display mode requires the 'embedded-graphics-simulator' feature")
+    anyhow::bail!("windowed display mode requires the 'window' feature flag")
 }
 
-#[cfg(feature = "embedded-graphics-simulator")]
+#[cfg(feature = "window")]
 async fn display_window(mut client: Client) -> anyhow::Result<()> {
     use embedded_graphics::{mono_font::MonoTextStyle, pixelcolor::BinaryColor};
     use embedded_graphics_simulator::{

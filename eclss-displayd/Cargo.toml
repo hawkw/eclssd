@@ -6,7 +6,10 @@ readme = "README.md"
 license = "MIT"
 
 [features]
-default = ["embedded-graphics-simulator"]
+default = ["window", "terminal"]
+window = ["dep:embedded-graphics-simulator"]
+terminal = []
+
 
 [dependencies]
 anyhow = { workspace = true }
