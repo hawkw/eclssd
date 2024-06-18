@@ -119,10 +119,10 @@ where
 {
     use embedded_graphics::text::{Alignment, LineHeight, Text, TextStyleBuilder};
     const OFFSET: i32 = 2;
-    const TEMP: &str = "TEMP";
-    const HUMIDITY: &str = "HUMIDITY";
-    const TVOC: &str = "TVOC";
-    const CO2: &str = "CO2";
+    const TEMP: &str = "TEMP:";
+    const HUMIDITY: &str = "HUMIDITY:";
+    const TVOC: &str = "TVOC:";
+    const CO2: &str = "CO2:";
 
     const WIDTH: usize = {
         let labels = [TEMP, HUMIDITY, TVOC, CO2];
@@ -144,37 +144,44 @@ where
         .line_height(LineHeight::Percent(110))
         .build();
     let temp = mean(&metrics.temp_c)
-        .map(|t| format!("{TEMP:>WIDTH$}: {t:.2} °C\n"))
-        .unwrap_or_else(|| format!("{TEMP:>WIDTH$}: ??? °C\n"));
+        .map(|temp_c| {
+            let temp_f = temp_c_to_f(temp_c);
+            format!("{TEMP:<WIDTH$} {temp_c:2.2} °C / {temp_f:3.2} °F\n")
+        })
+        .unwrap_or_else(|| format!("{TEMP:<WIDTH$} ??? °C / ??? °F\n"));
 
     let pt = Text::with_text_style(&temp, Point::new(OFFSET, OFFSET), char_style, text_style)
         .draw(target)
         .map_err(|e| anyhow::anyhow!("error drawing temperature: {e:?}"))?;
 
     let rel_humidity = mean(&metrics.rel_humidity_percent)
-        .map(|h| format!("{HUMIDITY:>WIDTH$}: {h:.2}%\n"))
-        .unwrap_or_else(|| format!("{HUMIDITY:>WIDTH$}: ???%\n"));
+        .map(|h| format!("{HUMIDITY:<WIDTH$} {h:.2}%\n"))
+        .unwrap_or_else(|| format!("{HUMIDITY:<WIDTH$}: ???%\n"));
 
     let pt = Text::with_text_style(&rel_humidity, pt, char_style, text_style)
         .draw(target)
         .map_err(|e| anyhow::anyhow!("error drawing humidity: {e:?}"))?;
 
     let co2_ppm = mean(&metrics.co2_ppm)
-        .map(|c| format!("{CO2:>WIDTH$}: {c:.2} ppm\n"))
-        .unwrap_or_else(|| format!("{CO2:>WIDTH$}: ??? ppm\n"));
+        .map(|c| format!("{CO2:<WIDTH$} {c:.2} ppm\n"))
+        .unwrap_or_else(|| format!("{CO2:<WIDTH$} ??? ppm\n"));
 
     let pt = Text::with_text_style(&co2_ppm, pt, char_style, text_style)
         .draw(target)
         .map_err(|e| anyhow::anyhow!("error drawing CO2: {e:?}"))?;
 
     let tvoc_ppb = mean(&metrics.tvoc_ppb)
-        .map(|c| format!("{TVOC:>WIDTH$}: {c:.2} ppb\n"))
-        .unwrap_or_else(|| format!("{TVOC:>WIDTH$}: ??? ppb\n"));
+        .map(|c| format!("{TVOC:<WIDTH$} {c:.2} ppb\n"))
+        .unwrap_or_else(|| format!("{TVOC:<WIDTH$} ??? ppb\n"));
 
     Text::with_text_style(&tvoc_ppb, pt, char_style, text_style)
         .draw(target)
         .map_err(|e| anyhow::anyhow!("error drawing tVOC: {e:?}"))?;
     Ok(())
+}
+
+fn temp_c_to_f(temp_c: f64) -> f64 {
+    (temp_c * 1.8) + 32.0
 }
 
 fn mean(measurements: impl AsRef<[eclss_api::Measurement]>) -> Option<f64> {
