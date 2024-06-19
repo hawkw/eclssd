@@ -7,14 +7,14 @@ mod display;
 
 #[derive(Debug, Parser)]
 struct Args {
-    #[clap(flatten)]
-    trace: TraceArgs,
-
     /// The hostname of the `eclssd` instance to display data from.
     host: reqwest::Url,
 
     #[clap(subcommand)]
     display: DisplayCommand,
+
+    #[clap(flatten)]
+    trace: TraceArgs,
 }
 
 #[derive(clap::Subcommand, Debug)]
