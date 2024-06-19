@@ -1,6 +1,6 @@
 use crate::{
     error::{Context, EclssError, SensorError},
-    metrics::Gauge,
+    metrics::{DiameterLabel, Gauge},
     sensor::Sensor,
     SharedBus,
 };
@@ -19,6 +19,10 @@ pub struct Sen55<I: 'static, D> {
     rel_humidity: &'static Gauge,
     abs_humidity: &'static Gauge,
     temp: &'static Gauge,
+    pm1_0: &'static Gauge,
+    pm2_5: &'static Gauge,
+    pm4_0: &'static Gauge,
+    pm10_0: &'static Gauge,
     delay: D,
     abs_humidity_interval: usize,
     polls: Wrapping<usize>,
@@ -34,11 +38,21 @@ where
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
+        const fn diameter(diameter: &'static str) -> DiameterLabel {
+            DiameterLabel {
+                diameter,
+                sensor: NAME,
+            }
+        }
         Self {
             sensor: AsyncSen5x::new(&eclss.i2c),
             rel_humidity: metrics.rel_humidity_percent.register(NAME).unwrap(),
             abs_humidity: metrics.abs_humidity_grams_m3.register(NAME).unwrap(),
             temp: metrics.temp_c.register(NAME).unwrap(),
+            pm1_0: metrics.pm_conc.register(diameter("1.0")).unwrap(),
+            pm2_5: metrics.pm_conc.register(diameter("2.5")).unwrap(),
+            pm4_0: metrics.pm_conc.register(diameter("4.0")).unwrap(),
+            pm10_0: metrics.pm_conc.register(diameter("10.0")).unwrap(),
             delay,
             polls: Wrapping(0),
             abs_humidity_interval: 1,
@@ -97,8 +111,14 @@ where
         let voc = measurement.voc_index();
         let nox_index = measurement.nox_index();
         debug!(
-            "{NAME}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, VOC: {voc:?}, NOx: {nox_index:?}"
+            "{NAME}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, VOC: {voc:?}, NOx: {nox_index:?}, ready: {ready}"
         );
+        let pm1_0 = measurement.pm1_0();
+        let pm2_5 = measurement.pm2_5();
+        let pm4_0 = measurement.pm4_0();
+        let pm10_0 = measurement.pm10_0();
+
+        debug!("{NAME}: PM1.0: {pm1_0:?}, PM2.5: {pm2_5:?}, PM4.0: {pm4_0:?}, PM10.0: {pm10_0:?}");
 
         if ready {
             if let Some(humidity) = rel_humidity {
@@ -107,6 +127,19 @@ where
             if let Some(temp) = temp {
                 self.temp.set_value(temp as f64);
             }
+
+            macro_rules! update_particulates {
+                ($($name:ident),+) => {
+                    $(
+                        if let Some(pm) = $name {
+                            self.$name.set_value(pm.into());
+                        }
+                    )+
+                }
+            }
+
+            update_particulates!(pm1_0, pm2_5, pm4_0, pm10_0);
+
             if let (Some(temp), Some(humidity)) = (temp, rel_humidity) {
                 if self.polls.0 % self.abs_humidity_interval == 0 {
                     let abs_humidity = super::absolute_humidity(temp, humidity);

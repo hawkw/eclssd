@@ -23,17 +23,23 @@ pub struct Pmsa003i<I: 'static> {
 impl<I> Pmsa003i<I> {
     pub fn new<const SENSORS: usize>(eclss: &'static crate::Eclss<I, { SENSORS }>) -> Self {
         let metrics = &eclss.metrics;
+        const fn diameter(diameter: &'static str) -> DiameterLabel {
+            DiameterLabel {
+                diameter,
+                sensor: NAME,
+            }
+        }
         Self {
             sensor: pmsa003i::Pmsa003i::new(&eclss.i2c),
-            pm2_5: metrics.pm_conc.register(DiameterLabel("2.5")).unwrap(),
-            pm1_0: metrics.pm_conc.register(DiameterLabel("1.0")).unwrap(),
-            pm10_0: metrics.pm_conc.register(DiameterLabel("10.0")).unwrap(),
-            particles_0_3um: metrics.pm_count.register(DiameterLabel("0.3")).unwrap(),
-            particles_0_5um: metrics.pm_count.register(DiameterLabel("0.5")).unwrap(),
-            particles_1_0um: metrics.pm_count.register(DiameterLabel("1.0")).unwrap(),
-            particles_2_5um: metrics.pm_count.register(DiameterLabel("2.5")).unwrap(),
-            particles_5_0um: metrics.pm_count.register(DiameterLabel("5.0")).unwrap(),
-            particles_10_0um: metrics.pm_count.register(DiameterLabel("10.0")).unwrap(),
+            pm2_5: metrics.pm_conc.register(diameter("2.5")).unwrap(),
+            pm1_0: metrics.pm_conc.register(diameter("1.0")).unwrap(),
+            pm10_0: metrics.pm_conc.register(diameter("10.0")).unwrap(),
+            particles_0_3um: metrics.pm_count.register(diameter("0.3")).unwrap(),
+            particles_0_5um: metrics.pm_count.register(diameter("0.5")).unwrap(),
+            particles_1_0um: metrics.pm_count.register(diameter("1.0")).unwrap(),
+            particles_2_5um: metrics.pm_count.register(diameter("2.5")).unwrap(),
+            particles_5_0um: metrics.pm_count.register(diameter("5.0")).unwrap(),
+            particles_10_0um: metrics.pm_count.register(diameter("10.0")).unwrap(),
         }
     }
 }

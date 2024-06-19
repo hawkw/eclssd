@@ -26,7 +26,7 @@ pub struct Measurement {
 }
 
 #[derive(
-    Copy, Clone, PartialEq, Serialize, Deserialize, strum::IntoStaticStr, strum::EnumString,
+    Copy, Clone, PartialEq, Eq, Serialize, Deserialize, strum::IntoStaticStr, strum::EnumString,
 )]
 #[cfg_attr(feature = "fmt", derive(Debug, strum::Display))]
 #[cfg_attr(feature = "clap", derive(clap::ValueEnum))]

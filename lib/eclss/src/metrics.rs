@@ -52,15 +52,21 @@ pub const HUMIDITY_METRICS: usize =
 pub const PRESSURE_METRICS: usize = count_features!("bme680");
 pub const VOC_RESISTANCE_METRICS: usize = count_features!("bme680");
 pub const TVOC_METRICS: usize = count_features!("sgp30", "bme680", "ens160");
-pub const PM_CONC_METRICS: usize = count_features!("pmsa003i") * 3;
+pub const PM_CONC_METRICS: usize =
+    // PMSA003I exposes three particulate concentration metrics
+    (count_features!("pmsa003i") * 3)
+    // SEN5x sensors expose 4 particulate concentration metrics
+    + (count_features!("sen55") * 4);
 pub const PM_COUNT_METRICS: usize = count_features!("pmsa003i") * 6;
 pub const SENSORS: usize = count_features!(
     "scd30", "scd40", "scd41", "sen55", "sgp30", "bme680", "ens160", "sht41", "pmsa003i"
 );
 
 #[derive(Debug, Eq, PartialEq, serde::Serialize)]
-#[serde(transparent)]
-pub struct DiameterLabel(pub &'static str);
+pub struct DiameterLabel {
+    pub diameter: &'static str,
+    pub sensor: SensorName,
+}
 
 impl SensorMetrics {
     pub const fn new() -> Self {
@@ -143,7 +149,8 @@ impl fmt::Display for SensorMetrics {
 
 impl FmtLabels for DiameterLabel {
     fn fmt_labels(&self, writer: &mut impl core::fmt::Write) -> core::fmt::Result {
-        write!(writer, "diameter=\"{}\",sensor=\"PMSA003I\"", self.0)
+        let Self { diameter, sensor } = self;
+        write!(writer, "diameter=\"{diameter}\",sensor=\"{sensor}\"")
     }
 }
 
