@@ -50,7 +50,7 @@ impl Args {
 
 struct Client {
     client: reqwest::Client,
-    metrics_url: reqwest::Url,
+    pub(crate) metrics_url: reqwest::Url,
 }
 
 impl Client {
