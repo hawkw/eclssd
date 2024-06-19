@@ -1,9 +1,9 @@
 use anyhow::Context;
 use clap::Parser;
 use eclss_app::TraceArgs;
-use embedded_graphics::geometry::Point;
-use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::prelude::*;
+
+mod display;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -13,29 +13,34 @@ struct Args {
     /// The hostname of the `eclssd` instance to display data from.
     host: reqwest::Url,
 
-    /// Refresh interval
-    #[clap(long, short, default_value = "2s")]
-    refresh: humantime::Duration,
-
     #[clap(subcommand)]
     display: DisplayCommand,
 }
 
 #[derive(clap::Subcommand, Debug)]
 enum DisplayCommand {
-    Terminal,
+    Terminal(TerminalArgs),
     /// Display ECLSS data in a window.
-    Window,
+    Window(display::WindowArgs),
+    /// Display ECLSS data on an SSD1680 e-ink display.
+    ///
+    /// Default arguments are for the Adafruit 2.13" e-ink display.
+    Ssd1680(display::Ssd1680Args),
+}
+
+#[derive(Debug, Parser)]
+struct TerminalArgs {
+    /// Refresh interval
+    #[clap(long, short, default_value = "2s")]
+    refresh: humantime::Duration,
 }
 
 impl Args {
     fn client(&self) -> anyhow::Result<Client> {
         let client = reqwest::Client::new();
-        let interval = tokio::time::interval(self.refresh.into());
         let metrics_url = self.host.join("/metrics.json")?;
         Ok(Client {
             client,
-            interval,
             metrics_url,
         })
     }
@@ -43,13 +48,11 @@ impl Args {
 
 struct Client {
     client: reqwest::Client,
-    interval: tokio::time::Interval,
     metrics_url: reqwest::Url,
 }
 
 impl Client {
     async fn fetch(&mut self) -> anyhow::Result<eclss_api::Metrics> {
-        self.interval.tick().await;
         tracing::debug!("fetching sensor data...");
         let rsp = self
             .client
@@ -68,116 +71,21 @@ async fn main() -> anyhow::Result<()> {
     args.trace.trace_init();
     let client = args.client()?;
     match args.display {
-        DisplayCommand::Terminal => display_terminal(client).await,
-        DisplayCommand::Window => display_window(client).await,
+        DisplayCommand::Terminal(cmd) => cmd.run(client).await,
+        DisplayCommand::Window(cmd) => cmd.run(client).await,
+        DisplayCommand::Ssd1680(cmd) => cmd.run(client).await,
     }
 }
 
-async fn display_terminal(mut client: Client) -> anyhow::Result<()> {
-    loop {
-        let fetch = client.fetch().await?;
-        println!("{:#?}\n", fetch);
-    }
-}
-
-#[cfg(not(feature = "window"))]
-async fn display_window(client: Client) -> anyhow::Result<()> {
-    anyhow::bail!("windowed display mode requires the 'window' feature flag")
-}
-
-#[cfg(feature = "window")]
-async fn display_window(mut client: Client) -> anyhow::Result<()> {
-    use embedded_graphics::{mono_font::MonoTextStyle, pixelcolor::BinaryColor};
-    use embedded_graphics_simulator::{
-        BinaryColorTheme, OutputSettingsBuilder, SimulatorDisplay, Window,
-    };
-    let mut display: SimulatorDisplay<BinaryColor> = SimulatorDisplay::new(Size::new(296, 128));
-
-    let output_settings = OutputSettingsBuilder::new()
-        .theme(BinaryColorTheme::OledBlue)
-        .build();
-    let mut window = Window::new("eclss-displayd", &output_settings);
-    let style = MonoTextStyle::new(&profont::PROFONT_12_POINT, BinaryColor::On);
-
-    loop {
-        let metrics = client.fetch().await?;
-
-        display.clear(BinaryColor::Off)?;
-        render_embedded_graphics(&mut display, style, &metrics)?;
-        window.update(&display);
-    }
-}
-
-fn render_embedded_graphics<D>(
-    target: &mut D,
-    char_style: MonoTextStyle<'_, D::Color>,
-    metrics: &eclss_api::Metrics,
-) -> anyhow::Result<()>
-where
-    D: embedded_graphics::draw_target::DrawTarget,
-    D::Error: core::fmt::Debug,
-{
-    use embedded_graphics::text::{Alignment, LineHeight, Text, TextStyleBuilder};
-    const OFFSET: i32 = 2;
-    const TEMP: &str = "TEMP:";
-    const HUMIDITY: &str = "HUMIDITY:";
-    const TVOC: &str = "TVOC:";
-    const CO2: &str = "CO2:";
-
-    const WIDTH: usize = {
-        let labels = [TEMP, HUMIDITY, TVOC, CO2];
-        let mut max = 0;
-        let mut i = 0;
-        while i < labels.len() {
-            let len = labels[i].len();
-            if len > max {
-                max = len;
-            }
-            i += 1;
+impl TerminalArgs {
+    async fn run(self, mut client: Client) -> anyhow::Result<()> {
+        let mut interval = tokio::time::interval(self.refresh.into());
+        loop {
+            let fetch = client.fetch().await?;
+            println!("{:#?}\n", fetch);
+            interval.tick().await;
         }
-        max
-    };
-
-    let text_style = TextStyleBuilder::new()
-        .alignment(Alignment::Left)
-        .baseline(embedded_graphics::text::Baseline::Top)
-        .line_height(LineHeight::Percent(110))
-        .build();
-    let temp = mean(&metrics.temp_c)
-        .map(|temp_c| {
-            let temp_f = temp_c_to_f(temp_c);
-            format!("{TEMP:<WIDTH$} {temp_c:2.2} °C / {temp_f:3.2} °F\n")
-        })
-        .unwrap_or_else(|| format!("{TEMP:<WIDTH$} ??? °C / ??? °F\n"));
-
-    let pt = Text::with_text_style(&temp, Point::new(OFFSET, OFFSET), char_style, text_style)
-        .draw(target)
-        .map_err(|e| anyhow::anyhow!("error drawing temperature: {e:?}"))?;
-
-    let rel_humidity = mean(&metrics.rel_humidity_percent)
-        .map(|h| format!("{HUMIDITY:<WIDTH$} {h:.2}%\n"))
-        .unwrap_or_else(|| format!("{HUMIDITY:<WIDTH$}: ???%\n"));
-
-    let pt = Text::with_text_style(&rel_humidity, pt, char_style, text_style)
-        .draw(target)
-        .map_err(|e| anyhow::anyhow!("error drawing humidity: {e:?}"))?;
-
-    let co2_ppm = mean(&metrics.co2_ppm)
-        .map(|c| format!("{CO2:<WIDTH$} {c:.2} ppm\n"))
-        .unwrap_or_else(|| format!("{CO2:<WIDTH$} ??? ppm\n"));
-
-    let pt = Text::with_text_style(&co2_ppm, pt, char_style, text_style)
-        .draw(target)
-        .map_err(|e| anyhow::anyhow!("error drawing CO2: {e:?}"))?;
-
-    let tvoc_ppb = mean(&metrics.tvoc_ppb)
-        .map(|c| format!("{TVOC:<WIDTH$} {c:.2} ppb\n"))
-        .unwrap_or_else(|| format!("{TVOC:<WIDTH$} ??? ppb\n"));
-
-    Text::with_text_style(&tvoc_ppb, pt, char_style, text_style)
-        .draw(target)
-        .map_err(|e| anyhow::anyhow!("error drawing tVOC: {e:?}"))?;
-    Ok(())
+    }
 }
 
 fn temp_c_to_f(temp_c: f64) -> f64 {
