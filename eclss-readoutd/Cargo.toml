@@ -1,5 +1,5 @@
 [package]
-name = "eclss-displayd"
+name = "eclss-readoutd"
 version = "0.1.0"
 edition = "2021"
 readme = "README.md"
