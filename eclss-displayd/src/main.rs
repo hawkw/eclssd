@@ -4,6 +4,8 @@ use eclss_app::TraceArgs;
 use embedded_graphics::prelude::*;
 
 mod display;
+#[cfg(feature = "terminal")]
+mod terminal;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -65,6 +67,13 @@ impl Client {
     }
 }
 
+#[cfg(not(feature = "terminal"))]
+impl TerminalArgs {
+    async fn run(self, _: Client) -> anyhow::Result<()> {
+        anyhow::bail!("terminal display mode requires the 'terminal' feature flag")
+    }
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
@@ -74,17 +83,6 @@ async fn main() -> anyhow::Result<()> {
         DisplayCommand::Terminal(cmd) => cmd.run(client).await,
         DisplayCommand::Window(cmd) => cmd.run(client).await,
         DisplayCommand::Ssd1680(cmd) => cmd.run(client).await,
-    }
-}
-
-impl TerminalArgs {
-    async fn run(self, mut client: Client) -> anyhow::Result<()> {
-        let mut interval = tokio::time::interval(self.refresh.into());
-        loop {
-            let fetch = client.fetch().await?;
-            println!("{:#?}\n", fetch);
-            interval.tick().await;
-        }
     }
 }
 
