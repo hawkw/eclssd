@@ -1,6 +1,5 @@
 use anyhow::Context;
 use clap::Parser;
-use eclss::retry::ExpBackoff;
 use eclss::sensor::{self, SensorName};
 use eclss::Eclss;
 use eclss_app::TraceArgs;
