@@ -101,15 +101,17 @@ where
             .data_ready(&mut self.delay)
             .await
             .context("failed to check if SEN5x data is ready")?;
+
         let measurement = self
             .sensor
-            .read_raw_measurement(&mut self.delay)
+            .read_measurements(&mut self.delay)
             .await
             .context("failed to read SEN5x measurement data")?;
         let temp = measurement.temp_c();
         let rel_humidity = measurement.relative_humidity();
         let voc = measurement.voc_index();
         let nox_index = measurement.nox_index();
+
         debug!(
             "{NAME}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, VOC: {voc:?}, NOx: {nox_index:?}, ready: {ready}"
         );
@@ -117,8 +119,7 @@ where
         let pm2_5 = measurement.pm2_5();
         let pm4_0 = measurement.pm4_0();
         let pm10_0 = measurement.pm10_0();
-
-        debug!("{NAME}: PM1.0: {pm1_0:?}, PM2.5: {pm2_5:?}, PM4.0: {pm4_0:?}, PM10.0: {pm10_0:?}");
+        debug!("{NAME}: PM1.0: {pm1_0:?}, PM2.5: {pm2_5:?}, PM4.0: {pm4_0:?}, PM10.0: {pm10_0:?}, ready: {ready}");
 
         if ready {
             if let Some(humidity) = rel_humidity {
