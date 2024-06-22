@@ -23,6 +23,8 @@ pub struct Sen55<I: 'static, D> {
     pm2_5: &'static Gauge,
     pm4_0: &'static Gauge,
     pm10_0: &'static Gauge,
+    nox_index: &'static Gauge,
+    voc_index: &'static Gauge,
     delay: D,
     abs_humidity_interval: usize,
     polls: Wrapping<usize>,
@@ -53,6 +55,8 @@ where
             pm2_5: metrics.pm_conc.register(diameter("2.5")).unwrap(),
             pm4_0: metrics.pm_conc.register(diameter("4.0")).unwrap(),
             pm10_0: metrics.pm_conc.register(diameter("10.0")).unwrap(),
+            nox_index: metrics.nox_iaq_index.register(NAME).unwrap(),
+            voc_index: metrics.tvoc_iaq_index.register(NAME).unwrap(),
             delay,
             polls: Wrapping(0),
             abs_humidity_interval: 1,
@@ -109,11 +113,12 @@ where
             .context("failed to read SEN5x measurement data")?;
         let temp = measurement.temp_c();
         let rel_humidity = measurement.relative_humidity();
-        let voc = measurement.voc_index();
+        let voc_index = measurement.voc_index();
         let nox_index = measurement.nox_index();
 
         debug!(
-            "{NAME}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, VOC: {voc:?}, NOx: {nox_index:?}, ready: {ready}"
+            "{NAME}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, \
+            VOC Index: {voc_index:?}, NOx Index: {nox_index:?}, ready: {ready}"
         );
         let pm1_0 = measurement.pm1_0();
         let pm2_5 = measurement.pm2_5();
@@ -122,14 +127,7 @@ where
         debug!("{NAME}: PM1.0: {pm1_0:?}, PM2.5: {pm2_5:?}, PM4.0: {pm4_0:?}, PM10.0: {pm10_0:?}, ready: {ready}");
 
         if ready {
-            if let Some(humidity) = rel_humidity {
-                self.rel_humidity.set_value(humidity as f64);
-            }
-            if let Some(temp) = temp {
-                self.temp.set_value(temp as f64);
-            }
-
-            macro_rules! update_particulates {
+            macro_rules! update_metrics {
                 ($($name:ident),+) => {
                     $(
                         if let Some(pm) = $name {
@@ -139,7 +137,16 @@ where
                 }
             }
 
-            update_particulates!(pm1_0, pm2_5, pm4_0, pm10_0);
+            update_metrics!(
+                rel_humidity,
+                temp,
+                nox_index,
+                voc_index,
+                pm1_0,
+                pm2_5,
+                pm4_0,
+                pm10_0
+            );
 
             if let (Some(temp), Some(humidity)) = (temp, rel_humidity) {
                 if self.polls.0 % self.abs_humidity_interval == 0 {

@@ -13,6 +13,8 @@ pub struct Metrics {
     pub co2_ppm: heapless::Vec<Measurement, MAX_SENSORS>,
     pub eco2_ppm: heapless::Vec<Measurement, MAX_SENSORS>,
     pub tvoc_ppb: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub tvoc_iaq_index: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub nox_iaq_index: heapless::Vec<Measurement, MAX_SENSORS>,
     pub pressure_hpa: heapless::Vec<Measurement, MAX_SENSORS>,
     pub sensor_errors: heapless::Vec<Measurement, MAX_SENSORS>,
 }

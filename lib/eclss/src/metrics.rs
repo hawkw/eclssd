@@ -24,6 +24,10 @@ pub struct SensorMetrics {
     #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_metric"))]
     pub tvoc_ppb: GaugeFamily<'static, TVOC_METRICS, SensorName>,
     #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_metric"))]
+    pub tvoc_iaq_index: GaugeFamily<'static, TVOC_IAQ_METRICS, SensorName>,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_metric"))]
+    pub nox_iaq_index: GaugeFamily<'static, NOX_IAQ_METRICS, SensorName>,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_metric"))]
     #[serde(skip)]
     pub pm_conc: GaugeFamily<'static, PM_CONC_METRICS, DiameterLabel>,
     // #[cfg_attr(feature = "serde", serde(serialize_with =
@@ -52,6 +56,9 @@ pub const HUMIDITY_METRICS: usize =
 pub const PRESSURE_METRICS: usize = count_features!("bme680");
 pub const VOC_RESISTANCE_METRICS: usize = count_features!("bme680");
 pub const TVOC_METRICS: usize = count_features!("sgp30", "bme680", "ens160");
+// IAQ from 1-500
+pub const TVOC_IAQ_METRICS: usize = count_features!("sen55", "bme680", "sgp40");
+pub const NOX_IAQ_METRICS: usize = count_features!("sen55");
 pub const PM_CONC_METRICS: usize =
     // PMSA003I exposes three particulate concentration metrics
     (count_features!("pmsa003i") * 3)
@@ -103,6 +110,14 @@ impl SensorMetrics {
                 .with_help("Total Volatile Organic Compounds (VOC) in parts per billion (ppb)")
                 .with_unit("ppb")
                 .build_labeled::<_, SensorName, TVOC_METRICS>(),
+            tvoc_iaq_index: MetricBuilder::new("tvoc_iaq_index")
+                .with_help("Total Volatile Organic Compounds (VOC) Indoor Air Quality (IAQ) Index from 0-500")
+                .with_unit("IAQ index")
+                .build_labeled::<_, SensorName, TVOC_IAQ_METRICS>(),
+            nox_iaq_index: MetricBuilder::new("nox_iaq_index")
+                .with_help("Nitrogen Oxides (NOx) Indoor Air Quality (IAQ) Index from 0-500")
+                .with_unit("IAQ index")
+                .build_labeled::<_, SensorName, NOX_IAQ_METRICS>(),
             pm_conc: MetricBuilder::new("pm_concentration_ug_m3")
                 .with_help("Particulate matter concentration in ug/m^3")
                 .with_unit("ug/m^3")
@@ -126,6 +141,8 @@ impl SensorMetrics {
         self.pressure_hpa.fmt_metric(f)?;
         self.gas_resistance.fmt_metric(f)?;
         self.tvoc_ppb.fmt_metric(f)?;
+        self.tvoc_iaq_index.fmt_metric(f)?;
+        self.nox_iaq_index.fmt_metric(f)?;
         self.pm_conc.fmt_metric(f)?;
         self.pm_count.fmt_metric(f)?;
         self.sensor_errors.fmt_metric(f)?;
