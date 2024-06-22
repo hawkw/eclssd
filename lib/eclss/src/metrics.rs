@@ -36,6 +36,8 @@ pub struct SensorMetrics {
     pub pm_count: GaugeFamily<'static, PM_COUNT_METRICS, DiameterLabel>,
     #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_metric"))]
     pub sensor_errors: CounterFamily<'static, SENSORS, SensorName>,
+    #[cfg_attr(feature = "serde", serde(serialize_with = "serialize_metric"))]
+    pub sensor_reset_count: CounterFamily<'static, SENSORS, SensorName>,
 }
 macro_rules! count_features {
     ($($feature:literal),*) => {{
@@ -129,6 +131,10 @@ impl SensorMetrics {
             sensor_errors: MetricBuilder::new("sensor_error_count")
                 .with_help("Count of I2C errors that occurred while talking to a sensor")
                 .build_labeled::<_, SensorName, SENSORS>(),
+
+            sensor_reset_count: MetricBuilder::new("sensor_reset_count")
+                .with_help("The number of times a sensor was reset successfully")
+                .build_labeled::<_, SensorName, SENSORS>(),
         }
     }
 
@@ -146,6 +152,7 @@ impl SensorMetrics {
         self.pm_conc.fmt_metric(f)?;
         self.pm_count.fmt_metric(f)?;
         self.sensor_errors.fmt_metric(f)?;
+        self.sensor_reset_count.fmt_metric(f)?;
         Ok(())
     }
 }

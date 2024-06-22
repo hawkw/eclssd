@@ -20,6 +20,7 @@ pub struct Sgp30<I: 'static, D> {
     eco2: &'static Gauge,
     abs_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorName>,
     calibration_polls: usize,
+    last_good_baseline: Option<sgp30::Baseline>,
 }
 
 /// Wrapper type to add a `Display` implementation to the `sgp30` crate's error
@@ -47,6 +48,7 @@ where
             eco2: metrics.eco2_ppm.register(NAME).unwrap(),
             abs_humidity: &metrics.abs_humidity_grams_m3,
             calibration_polls: 0,
+            last_good_baseline: None,
         }
     }
 }
@@ -65,9 +67,9 @@ where
     // The SGP30 must be polled every second in order to ensure that the dynamic
     // baseline calibration algorithm works correctly. Performing a measurement
     // takes 12 ms, reading the raw H2 and ETOH signals takes 25 ms, and
-    // setting the humidity compensation takes up to 10 ms, so
-    // we poll every 1000ms - 12ms - 10ms - 25ms = 953 ms.
-    const POLL_INTERVAL: Duration = Duration::from_millis(1000 - 12 - 10 - 25);
+    // setting the humidity compensation and/or reading the baseline takes up to
+    // 10 ms, so we poll every 1000ms - 12ms - 10ms - 10ms - 25ms = 943 ms.
+    const POLL_INTERVAL: Duration = Duration::from_millis(1000 - 12 - 10 - 10 - 25);
     type Error = EclssError<Sgp30Error<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
@@ -91,10 +93,19 @@ where
         if !selftest {
             return Err(Sgp30Error::SelfTestFailed.into());
         }
+
         self.sensor
-            .init()
+            .force_init()
             .await
             .context("error initializing SGP30")?;
+
+        if let Some(ref baseline) = self.last_good_baseline {
+            tracing::info!("Setting {NAME} baseline to {baseline:?}");
+            self.sensor
+                .set_baseline(baseline)
+                .await
+                .context("error setting SGP30 baseline")?;
+        }
 
         Ok(())
     }
@@ -112,20 +123,23 @@ where
                 }
             }
         });
-        let baseline = if let Some(h) = abs_h {
+
+        if let Some(h) = abs_h {
             self.sensor
                 .set_humidity(Some(&h))
                 .await
                 .context("error setting humidity for SGP30")?;
-            None
-        } else {
-            let baseline = self
-                .sensor
-                .get_baseline()
-                .await
-                .context("error reading SGP30 baseline")?;
-            Some(baseline)
-        };
+        }
+
+        let baseline = self
+            .sensor
+            .get_baseline()
+            .await
+            .map_err(|e| {
+                let error = Sgp30Error::from(e);
+                tracing::warn!(%error, "{NAME}: error reading baseline: {error}");
+            })
+            .ok();
 
         let sgp30::Measurement {
             tvoc_ppb,
@@ -138,16 +152,16 @@ where
 
         tracing::debug!("{NAME}: CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
 
-        let sgp30::RawSignals { h2, ethanol } = self
+        match self
             .sensor
             .measure_raw_signals()
             .await
-            .context("error reading SGP30 raw signals")?;
-
-        tracing::debug!("{NAME}: H₂: {h2}, Ethanol: {ethanol}");
-
-        if let Some(ref baseline) = baseline {
-            tracing::trace!("{NAME}: baseline: {baseline:?}");
+            .map_err(Sgp30Error::from)
+        {
+            Ok(sgp30::RawSignals { ethanol, h2 }) => {
+                tracing::debug!("{NAME}: H₂: {h2}, Ethanol: {ethanol}");
+            }
+            Err(error) => tracing::warn!(%error, "{NAME}: error reading raw signals: {error}"),
         }
 
         // Skip updating metrics until calibration completes.
@@ -165,15 +179,16 @@ where
         // maximum value. This generally seems to indicate that the sensor
         // is misbehaving, so just bail out and give it some time to settle down.
         if tvoc_ppb == MAX_TVOC {
-            tracing::warn!("{NAME} TVOC measurement saturated, ignoring it");
-            // TODO(eliza): consider returning an error here? But, the sensor
-            // wants to be polled exactly once per second, so it might not like
-            // it if we back off...
-            return Ok(());
+            return Err(Sgp30Error::Saturated.into());
         }
 
         self.tvoc.set_value(tvoc_ppb as f64);
         self.eco2.set_value(co2eq_ppm as f64);
+
+        if let Some(baseline) = baseline {
+            tracing::trace!("{NAME}: baseline: {baseline:?}");
+            self.last_good_baseline = Some(baseline);
+        }
 
         Ok(())
     }
@@ -192,6 +207,10 @@ impl<E: i2c::Error> SensorError for Sgp30Error<E> {
             Self::Sgp30(sgp30::Error::I2cWrite(i)) => Some(i.kind()),
             _ => None,
         }
+    }
+
+    fn should_reset(&self) -> bool {
+        matches!(self, Self::Saturated)
     }
 }
 

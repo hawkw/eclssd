@@ -66,7 +66,7 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
             name = "sensor",
             level = tracing::Level::INFO,
             skip(self, retry_backoff, delay, sensor),
-            fields(message = %S::NAME)
+            fields(sensor = %S::NAME)
         )
     )]
     pub async fn run_sensor<S>(
@@ -101,48 +101,72 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
             .sensor_errors
             .register(S::NAME)
             .ok_or("insufficient space in sensor errors metric")?;
-
-        let mut attempts = 0;
-        while let Err(error) = {
-            status.set_status(Status::Initializing);
-            sensor.init().await
-        } {
-            status.set_status(error.as_status());
-            errors.fetch_add(1);
-            attempts += 1;
-            warn!(
-                %error,
-                "failed to initialize {} (attempt {attempts}): {error}",
-                S::NAME
-            );
-
-            if Some(attempts) == max_init_attempts {
-                error!(
-                    "Giving up on {} after {attempts} failed initialization attempts!",
-                    S::NAME
-                );
-                return Err("failed to initialize sensor after maximum attempts");
-            }
-
-            backoff.wait(&mut delay).await;
-        }
-
-        backoff.reset();
-        info!("initialized {}", S::NAME);
-
-        loop {
-            delay.delay_ms(poll_interval.as_millis() as u32).await;
-            while let Err(error) = sensor.poll().await {
-                warn!(
-                    %error,
-                    retry_in = ?backoff.current(),
-                    "failed to poll {}, retrying: {error}", S::NAME
-                );
+        let resets = self
+            .metrics
+            .sensor_reset_count
+            .register(S::NAME)
+            .ok_or("insufficient space in sensor reset count metric")?;
+        let mut has_come_up = false;
+        'initialize: loop {
+            let mut attempts = 0;
+            let what_are_we_doing = if has_come_up { "initialize" } else { "reset" };
+            while let Err(error) = {
+                status.set_status(Status::Initializing);
+                sensor.init().await
+            } {
                 status.set_status(error.as_status());
                 errors.fetch_add(1);
+                attempts += 1;
+                warn!(
+                    %error,
+                    "failed to {what_are_we_doing} {} (attempt {attempts}): {error}",
+                    S::NAME
+                );
+
+                if Some(attempts) == max_init_attempts {
+                    error!(
+                        "Giving up on {} after {attempts} attempts to {what_are_we_doing}",
+                        S::NAME
+                    );
+                    return Err("failed to initialize sensor after maximum attempts");
+                }
+
                 backoff.wait(&mut delay).await;
             }
-            status.set_status(Status::Up);
+
+            backoff.reset();
+            if has_come_up {
+                resets.fetch_add(1);
+                info!("successfully reset {}", S::NAME);
+            } else {
+                info!("initialized {}", S::NAME);
+                has_come_up = true;
+            }
+
+            loop {
+                delay.delay_ms(poll_interval.as_millis() as u32).await;
+                while let Err(error) = sensor.poll().await {
+                    warn!(
+                        %error,
+                        retry_in = ?backoff.current(),
+                        "failed to poll {}, retrying: {error}", S::NAME
+                    );
+                    status.set_status(error.as_status());
+                    errors.fetch_add(1);
+
+                    if error.should_reset() {
+                        tracing::info!(
+                            %error,
+                            "attempting to clear {} error by resetting...",
+                            S::NAME,
+                        );
+                        continue 'initialize;
+                    } else {
+                        backoff.wait(&mut delay).await;
+                    }
+                }
+                status.set_status(Status::Up);
+            }
         }
     }
 }

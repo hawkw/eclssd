@@ -13,6 +13,17 @@ pub trait SensorError {
             Some(_) => sensor::Status::OtherI2cError,
         }
     }
+
+    /// Returns `true` if the error may be able to be cleared by
+    /// performing a sensor reset.
+    ///
+    /// If this returns `true`, the sensor driver will attempt a sensor reset
+    /// rather than backing off.
+    ///
+    /// By default, this method returns `false`.
+    fn should_reset(&self) -> bool {
+        false
+    }
 }
 
 pub trait Context<T, E> {
@@ -55,6 +66,10 @@ where
 impl<E: SensorError> SensorError for EclssError<E> {
     fn i2c_error(&self) -> Option<i2c::ErrorKind> {
         self.error.i2c_error()
+    }
+
+    fn should_reset(&self) -> bool {
+        self.error.should_reset()
     }
 }
 
