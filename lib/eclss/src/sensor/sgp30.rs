@@ -28,6 +28,7 @@ pub struct Sgp30<I: 'static, D> {
 pub enum Sgp30Error<E> {
     Sgp30(sgp30::Error<E>),
     SelfTestFailed,
+    Saturated,
 }
 
 impl<I, D> Sgp30<I, D>
@@ -52,6 +53,7 @@ where
 
 const NAME: SensorName = SensorName::Sgp30;
 const ADAFRUIT_SGP30_ADDR: u8 = 0x58;
+const MAX_TVOC: u16 = 60_000;
 
 impl<I, D> Sensor for Sgp30<I, D>
 where
@@ -133,17 +135,7 @@ where
             .measure()
             .await
             .context("error reading SGP30 measurements")?;
-        if self.calibration_polls <= 15 {
-            tracing::info!(
-                ?baseline,
-                "SGP30 calibrating baseline for {}/15 seconds...",
-                self.calibration_polls,
-            );
-            self.calibration_polls += 1;
-        } else {
-            self.tvoc.set_value(tvoc_ppb.into());
-            self.eco2.set_value(co2eq_ppm.into());
-        }
+
         tracing::debug!("{NAME}: CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
 
         let sgp30::RawSignals { h2, ethanol } = self
@@ -151,11 +143,37 @@ where
             .measure_raw_signals()
             .await
             .context("error reading SGP30 raw signals")?;
+
         tracing::debug!("{NAME}: H₂: {h2}, Ethanol: {ethanol}");
 
-        if let Some(baseline) = baseline {
+        if let Some(ref baseline) = baseline {
             tracing::trace!("{NAME}: baseline: {baseline:?}");
         }
+
+        // Skip updating metrics until calibration completes.
+        if self.calibration_polls <= 15 {
+            tracing::info!(
+                ?baseline,
+                "{NAME} calibrating baseline for {}/15 seconds...",
+                self.calibration_polls,
+            );
+            self.calibration_polls += 1;
+            return Ok(());
+        }
+
+        // Sometimes the sensor just reads 60,000 ppb TVOC, which is its
+        // maximum value. This generally seems to indicate that the sensor
+        // is misbehaving, so just bail out and give it some time to settle down.
+        if tvoc_ppb == MAX_TVOC {
+            tracing::warn!("{NAME} TVOC measurement saturated, ignoring it");
+            // TODO(eliza): consider returning an error here? But, the sensor
+            // wants to be polled exactly once per second, so it might not like
+            // it if we back off...
+            return Ok(());
+        }
+
+        self.tvoc.set_value(tvoc_ppb as f64);
+        self.eco2.set_value(co2eq_ppm as f64);
 
         Ok(())
     }
@@ -180,11 +198,12 @@ impl<E: i2c::Error> SensorError for Sgp30Error<E> {
 impl<E: fmt::Display> fmt::Display for Sgp30Error<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Sgp30(sgp30::Error::I2cRead(i)) => write!(f, "SGP30 I2C read error: {i}"),
-            Self::Sgp30(sgp30::Error::I2cWrite(i)) => write!(f, "SGP30 I2C write error: {i}"),
-            Self::Sgp30(sgp30::Error::Crc) => write!(f, "SGP30 CRC checksum validation failed"),
-            Self::Sgp30(sgp30::Error::NotInitialized) => write!(f, "SGP30 not initialized"),
-            Self::SelfTestFailed => f.write_str("SGP30 self-test failed"),
+            Self::Sgp30(sgp30::Error::I2cRead(i)) => write!(f, "{NAME} I2C read error: {i}"),
+            Self::Sgp30(sgp30::Error::I2cWrite(i)) => write!(f, "{NAME} I2C write error: {i}"),
+            Self::Sgp30(sgp30::Error::Crc) => write!(f, "{NAME} CRC checksum validation failed"),
+            Self::Sgp30(sgp30::Error::NotInitialized) => write!(f, "{NAME} not initialized"),
+            Self::SelfTestFailed => write!(f, "{NAME} self-test failed"),
+            Self::Saturated => write!(f, "{NAME} TVOC measurement saturated"),
         }
     }
 }
