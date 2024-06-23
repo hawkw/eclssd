@@ -2,6 +2,7 @@ use crate::{
     error::{Context, EclssError, SensorError},
     metrics::{Gauge, HUMIDITY_METRICS},
     sensor::Sensor,
+    storage::Store,
     SharedBus,
 };
 use core::fmt;
@@ -12,15 +13,16 @@ use embedded_hal_async::{
     delay::DelayNs,
     i2c::{self, I2c},
 };
-use sgp30::AsyncSgp30;
+use sgp30::{AsyncSgp30, Baseline};
 
-pub struct Sgp30<I: 'static, D> {
+pub struct Sgp30<I: 'static, D, S = ()> {
     sensor: AsyncSgp30<&'static SharedBus<I>, D>,
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
     abs_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorName>,
     calibration_polls: usize,
     last_good_baseline: Option<sgp30::Baseline>,
+    store: S,
 }
 
 /// Wrapper type to add a `Display` implementation to the `sgp30` crate's error
@@ -30,6 +32,27 @@ pub enum Sgp30Error<E> {
     Sgp30(sgp30::Error<E>),
     SelfTestFailed,
     Saturated,
+}
+
+/// The baseline values.
+#[derive(Debug, PartialEq, Eq, Clone, serde::Serialize, serde::Deserialize)]
+struct StoredBaseline {
+    /// CO₂eq baseline
+    co2eq: u16,
+    /// TVOC baseline
+    tvoc: u16,
+}
+
+impl From<Baseline> for StoredBaseline {
+    fn from(Baseline { co2eq, tvoc }: Baseline) -> Self {
+        Self { co2eq, tvoc }
+    }
+}
+
+impl From<StoredBaseline> for Baseline {
+    fn from(StoredBaseline { co2eq, tvoc }: StoredBaseline) -> Self {
+        Self { co2eq, tvoc }
+    }
 }
 
 impl<I, D> Sgp30<I, D>
@@ -49,19 +72,58 @@ where
             abs_humidity: &metrics.abs_humidity_grams_m3,
             calibration_polls: 0,
             last_good_baseline: None,
+            store: (),
+        }
+    }
+
+    pub fn with_storage<S: Store>(self, store: S) -> Sgp30<I, D, S> {
+        Sgp30 {
+            sensor: self.sensor,
+            tvoc: self.tvoc,
+            eco2: self.eco2,
+            abs_humidity: self.abs_humidity,
+            calibration_polls: self.calibration_polls,
+            last_good_baseline: self.last_good_baseline,
+            store,
         }
     }
 }
 
-const NAME: SensorName = SensorName::Sgp30;
 const ADAFRUIT_SGP30_ADDR: u8 = 0x58;
 const MAX_TVOC: u16 = 60_000;
+const NAME: SensorName = SensorName::Sgp30;
 
-impl<I, D> Sensor for Sgp30<I, D>
+impl<I, D, S> Sgp30<I, D, S>
+where
+    I: I2c,
+    D: DelayNs,
+    S: Store,
+    S::Error: core::fmt::Display,
+{
+    async fn refresh_baseline(&mut self) {
+        if self.last_good_baseline.is_some() {
+            return;
+        }
+
+        match self.store.load::<StoredBaseline>().await {
+            Ok(Some(baseline)) => {
+                let baseline = baseline.into();
+                info!("{NAME} loaded baseline from storage: {baseline:?}");
+                self.last_good_baseline = Some(baseline);
+            }
+            Ok(None) => {}
+            Err(error) => warn!("error loading {NAME} baseline from storage: {error}"),
+        }
+    }
+}
+
+impl<I, D, S> Sensor for Sgp30<I, D, S>
 where
     I: I2c + 'static,
     I::Error: core::fmt::Display,
     D: DelayNs,
+    S: Store + 'static,
+    S::Error: core::fmt::Display,
 {
     const NAME: SensorName = NAME;
     // The SGP30 must be polled every second in order to ensure that the dynamic
@@ -98,6 +160,8 @@ where
             .force_init()
             .await
             .context("error initializing SGP30")?;
+
+        self.refresh_baseline().await;
 
         if let Some(ref baseline) = self.last_good_baseline {
             info!("setting {NAME} baseline to {baseline:?}");
@@ -137,7 +201,7 @@ where
             .await
             .map_err(|e| {
                 let error = Sgp30Error::from(e);
-                tracing::warn!(%error, "{NAME}: error reading baseline: {error}");
+                warn!(%error, "{NAME}: error reading baseline: {error}");
             })
             .ok();
 
@@ -185,8 +249,14 @@ where
         self.eco2.set_value(co2eq_ppm as f64);
 
         if let Some(baseline) = baseline {
-            tracing::trace!("{NAME}: baseline: {baseline:?}");
-            self.last_good_baseline = Some(baseline);
+            if self.last_good_baseline.as_ref() != Some(&baseline) {
+                trace!("{NAME}: new basaeline: {baseline:?}");
+                let stored = StoredBaseline::from(baseline.clone());
+                self.last_good_baseline = Some(baseline);
+                if let Err(error) = self.store.store(&stored).await {
+                    warn!("error loading {NAME} baseline from storage: {error}")
+                }
+            }
         }
 
         Ok(())

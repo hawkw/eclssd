@@ -12,6 +12,7 @@ use std::time::Duration;
 
 #[cfg(feature = "mdns")]
 mod mdns;
+mod storage;
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -52,6 +53,10 @@ struct Args {
     /// connect to all sensors that are enabled at compile time.
     #[clap(long = "sensor", short, default_values_t = DEFAULT_SENSORS)]
     sensors: Vec<SensorName>,
+
+    /// Storage configuration.
+    #[clap(flatten)]
+    storage: storage::StorageArgs,
 }
 
 #[derive(Debug, Parser)]
@@ -89,6 +94,7 @@ async fn main() -> anyhow::Result<()> {
         version = %env!("CARGO_PKG_VERSION"),
         listen_addr = ?args.listen_addr,
         mdns = args.mdns,
+        storage = ?args.storage,
         "starting environmental controls and life support systems..."
     );
     tracing::info!(
@@ -131,11 +137,12 @@ async fn main() -> anyhow::Result<()> {
         #[cfg(not(feature = "mdns"))]
         anyhow::bail!("mDNS advertisement requires the `mdns` feature to be enabled");
     }
+    let state_dir = args.storage.ensure_state_dir().await?;
 
     let mut sensor_tasks = tokio::task::JoinSet::new();
     tracing::info!("Enabling the following sensors: {:?}", args.sensors);
     for sensor in args.sensors {
-        sensor_tasks.spawn(run_sensor(eclss, sensor, &args.retries));
+        sensor_tasks.spawn(run_sensor(eclss, &state_dir, sensor, &args.retries));
     }
 
     while let Some(join) = sensor_tasks.join_next().await {
@@ -168,11 +175,13 @@ const DEFAULT_SENSORS: &[SensorName] = &[
 
 fn run_sensor(
     eclss: &'static Eclss<AsyncI2c<I2cdev>, 16>,
+    state_dir: &storage::StateDir,
     name: SensorName,
     retries: &RetryArgs,
 ) -> impl Future<Output = anyhow::Result<()>> + Send + 'static {
     let backoff = retries.backoff();
     let init_attempts = retries.max_init_attempts;
+    let state_dir = state_dir.clone();
     async move {
         match name {
             #[cfg(feature = "pmsa003i")]
@@ -217,7 +226,11 @@ fn run_sensor(
             }
             #[cfg(feature = "sgp30")]
             SensorName::Sgp30 => {
-                let sensor = sensor::Sgp30::new(eclss, GoodDelay::default());
+                let state = state_dir
+                    .sensor_state(name)
+                    .await
+                    .with_context(|| format!("failed to open state file for {name}"))?;
+                let sensor = sensor::Sgp30::new(eclss, GoodDelay::default()).with_storage(state);
                 eclss
                     .run_sensor(sensor, backoff, GoodDelay::default(), init_attempts)
                     .await

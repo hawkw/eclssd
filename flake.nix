@@ -224,7 +224,7 @@
                   Restart = "on-failure";
                   RestartSec = "5s";
                   # only start if the I2C adapter is up.
-                  ConditionPathExists = "/sys/class/i2c-adapter";
+                  # ConditionPathExists = "/sys/class/i2c-adapter";
                   # Ensure that the "API VFS" (i.e. /dev/i2c-n) is mounted for
                   # the service.
                   MountAPIVFS = true;
@@ -234,6 +234,7 @@
                   # Ensure the service has access to the network so that it can
                   # bind its listener.
                   PrivateNetwork = false;
+                  StateDirectory = "/var/lib/eclssd";
                   # Misc hardening --- eclssd shouldn't need any filesystem
                   # access other than `/dev/i2c-*`.
                   PrivateTmp = true;
