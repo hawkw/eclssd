@@ -1,4 +1,4 @@
-// #![feature(impl_trait_in_assoc_type)]
+#![cfg_attr(not(feature = "std"), no_std)]
 use embedded_hal::i2c;
 use embedded_hal_async::i2c::I2c;
 use maitake_sync::Mutex;
@@ -10,6 +10,7 @@ pub mod error;
 pub mod metrics;
 pub mod retry;
 pub mod sensor;
+pub mod storage;
 
 pub struct Eclss<I, const SENSORS: usize> {
     pub(crate) metrics: SensorMetrics,

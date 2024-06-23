@@ -15,6 +15,7 @@ sen55 = ["dep:sensor-sen5x"]
 sgp30 = ["dep:sgp30"]
 sht41 = ["dep:sht4x", "dep:fixed"]
 default = ["pmsa003i", "scd41", "sen55", "ens160", "sgp30", "bme680"]
+std = []
 
 [dependencies]
 bosch-bme680 = { workspace = true, optional = true, features = ["embedded-hal-async"] }
