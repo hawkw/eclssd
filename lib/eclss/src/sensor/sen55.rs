@@ -28,6 +28,7 @@ pub struct Sen55<I: 'static, D> {
     delay: D,
     abs_humidity_interval: usize,
     polls: Wrapping<usize>,
+    last_warm_start_param: Option<u16>,
 }
 
 impl<I, D> Sen55<I, D>
@@ -60,6 +61,7 @@ where
             delay,
             polls: Wrapping(0),
             abs_humidity_interval: 1,
+            last_warm_start_param: None,
         }
     }
 }
@@ -82,6 +84,11 @@ where
     type Error = EclssError<Sen5xError<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
+        self.sensor
+            .reset(&mut self.delay)
+            .await
+            .context("failed to reset SEN5x")?;
+
         let product_name = self
             .sensor
             .read_product_name(&mut self.delay)
@@ -89,6 +96,15 @@ where
             .context("failed to read SEN5x product name")?;
         let name = product_name.as_str();
         info!("Connected to {name}...");
+
+        if let Some(param) = self.last_warm_start_param {
+            info!("Setting {name} warm start param to {param}");
+            self.sensor
+                .set_warm_start_parameter(&mut self.delay, param)
+                .await
+                .context("failed to set SEN5x warm start parameter")?;
+        }
+
         self.sensor
             .start_measurement(ParticulateMode::Enabled, &mut self.delay)
             .await
@@ -157,6 +173,14 @@ where
 
                 self.polls += 1;
             }
+        }
+
+        match self.sensor.read_warm_start_parameter(&mut self.delay).await {
+            Ok(param) => {
+                self.last_warm_start_param = Some(param);
+                trace!("{NAME}: Warm start parameter: {param}");
+            }
+            Err(error) => warn!("{NAME}: error reading warm start parameter: {error}"),
         }
 
         Ok(())
