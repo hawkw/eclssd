@@ -1,9 +1,9 @@
-#[cfg(feature = "serde")]
-use serde::{Serialize, Serializer};
-use std::{
+use core::{
     fmt,
     sync::atomic::{AtomicU8, Ordering},
 };
+#[cfg(feature = "serde")]
+use serde::{Serialize, Serializer};
 
 pub use eclss_api::SensorStatus as Status;
 

@@ -1,7 +1,7 @@
 pub use tinymetrics::{Counter, Gauge};
 
+use core::fmt;
 use eclss_api::SensorName;
-use std::fmt;
 use tinymetrics::{CounterFamily, FmtLabels, GaugeFamily, MetricBuilder, MetricFamily};
 
 #[derive(Debug)]
