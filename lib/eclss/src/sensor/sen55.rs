@@ -88,13 +88,13 @@ where
             .await
             .context("failed to read SEN5x product name")?;
         let name = product_name.as_str();
-        tracing::info!("Connected to {name}...");
+        info!("Connected to {name}...");
         self.sensor
             .start_measurement(ParticulateMode::Enabled, &mut self.delay)
             .await
             .context("failed to start SEN5x measurement")?;
 
-        tracing::info!("Started {name} measurements");
+        info!("Started {name} measurements");
 
         Ok(())
     }

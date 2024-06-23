@@ -1,22 +1,48 @@
-macro_rules! debug {
+#[cfg(feature = "tracing")]
+macro_rules! trace {
     ($($arg:tt)*) => {
-        #[cfg(feature = "tracing")]
-        tracing::debug!($($arg)*)
+        tracing::trace!($($arg)*);
     };
 }
 
+#[cfg(not(feature = "tracing"))]
+macro_rules! trace {
+    ($($arg:tt)*) => {};
+}
+
+#[cfg(feature = "tracing")]
+macro_rules! debug {
+    ($($arg:tt)*) => {
+        tracing::debug!($($arg)*)
+    };
+}
+#[cfg(not(feature = "tracing"))]
+macro_rules! debug {
+    ($($arg:tt)*) => {};
+}
+
+#[cfg(feature = "tracing")]
 macro_rules! info {
     ($($arg:tt)*) => {
-        #[cfg(feature = "tracing")]
         tracing::info!($($arg)*)
     };
 }
 
+#[cfg(not(feature = "tracing"))]
+macro_rules! info {
+    ($($arg:tt)*) => {};
+}
+
+#[cfg(feature = "tracing")]
 macro_rules! warn {
     ($($arg:tt)*) => {
-        #[cfg(feature = "tracing")]
         tracing::warn!($($arg)*)
     };
+}
+
+#[cfg(not(feature = "tracing"))]
+macro_rules! warn {
+    ($($arg:tt)*) => {};
 }
 
 macro_rules! error {
@@ -24,4 +50,9 @@ macro_rules! error {
         #[cfg(feature = "tracing")]
         tracing::error!($($arg)*)
     };
+}
+
+#[cfg(not(feature = "tracing"))]
+macro_rules! error {
+    ($($arg:tt)*) => {};
 }

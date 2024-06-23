@@ -82,7 +82,7 @@ where
             .serial_number(&mut self.delay)
             .await
             .context("error reading SHT41 serial number")?;
-        tracing::info!("Connected to {NAME}, serial number: {serial:#x}");
+        info!("Connected to {NAME}, serial number: {serial:#x}");
         Ok(())
     }
 
@@ -97,12 +97,12 @@ where
         let rel_humidity = reading.humidity_percent().to_num::<f64>();
         self.temp.set_value(temp);
         self.rel_humidity.set_value(rel_humidity);
-        tracing::debug!("{NAME}: Temp: {temp}°C, Humidity: {rel_humidity}%");
+        debug!("{NAME}: Temp: {temp}°C, Humidity: {rel_humidity}%");
 
         if self.polls.0 % self.abs_humidity_interval == 0 {
             let abs_humidity = super::absolute_humidity(temp as f32, rel_humidity as f32);
             self.abs_humidity.set_value(abs_humidity.into());
-            tracing::debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³");
+            debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³");
         }
 
         self.polls += 1;

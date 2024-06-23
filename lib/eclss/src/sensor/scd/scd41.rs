@@ -51,8 +51,8 @@ where
 
     async fn init(&mut self) -> Result<(), Self::Error> {
         match self.sensor.wake_up().await {
-            Ok(()) => tracing::debug!("Woke up SCD41"),
-            Err(error) => tracing::warn!(?error, "error waking up SCD41: {error:?}"),
+            Ok(()) => debug!("Woke up SCD41"),
+            Err(error) => warn!(?error, "error waking up SCD41: {error:?}"),
         }
 
         self.sensor
