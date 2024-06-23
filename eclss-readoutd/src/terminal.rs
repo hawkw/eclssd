@@ -33,7 +33,7 @@ impl TerminalArgs {
         terminal.clear()?;
 
         let mut input = Box::pin(EventStream::new());
-        let mut interval = tokio::time::interval(self.refresh.into());
+        let mut interval = client.refresh_interval();
         let fetch = client.fetch().await;
         let mut app = App {
             args: self,
@@ -90,7 +90,13 @@ struct App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Title::from(" ECLSS READOUT ".bold());
+        let title = match self.fetch {
+            Ok(Metrics {
+                location: Some(ref location),
+                ..
+            }) => Title::from(format!(" ECLSS READOUT - {location} ").bold()),
+            _ => Title::from(" ECLSS READOUT ".bold()),
+        };
         let instructions = Title::from(Line::from(vec![" Quit ".into(), "<q/Q> ".blue().bold()]));
         let block = Block::default()
             .title(title.alignment(Alignment::Center))

@@ -17,6 +17,7 @@ pub struct Metrics {
     pub nox_iaq_index: heapless::Vec<Measurement, MAX_SENSORS>,
     pub pressure_hpa: heapless::Vec<Measurement, MAX_SENSORS>,
     pub sensor_errors: heapless::Vec<Measurement, MAX_SENSORS>,
+    pub location: Option<heapless::String<64>>,
 }
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]

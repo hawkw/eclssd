@@ -10,3 +10,4 @@ edition = "2021"
 [dependencies]
 axum = { workspace = true }
 eclss = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive", "rc"] }

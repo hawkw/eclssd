@@ -2,6 +2,8 @@ use anyhow::Context;
 use clap::Parser;
 use eclss_app::TraceArgs;
 use embedded_graphics::prelude::*;
+use std::sync::Arc;
+use std::time::Duration;
 
 mod display;
 #[cfg(feature = "terminal")]
@@ -10,7 +12,15 @@ mod terminal;
 #[derive(Debug, Parser)]
 struct Args {
     /// The hostname of the `eclssd` instance to display data from.
-    host: reqwest::Url,
+    host: Arc<str>,
+
+    /// The target port on the eclssd instance.
+    #[clap(long, short, default_value_t = 4200)]
+    port: u16,
+
+    /// Refresh interval
+    #[clap(long, short, default_value = "2s", global = true)]
+    refresh: humantime::Duration,
 
     #[clap(subcommand)]
     display: DisplayCommand,
@@ -31,26 +41,27 @@ enum DisplayCommand {
 }
 
 #[derive(Debug, Parser)]
-struct TerminalArgs {
-    /// Refresh interval
-    #[clap(long, short, default_value = "2s")]
-    refresh: humantime::Duration,
-}
+struct TerminalArgs {}
 
 impl Args {
     fn client(&self) -> anyhow::Result<Client> {
         let client = reqwest::Client::new();
-        let metrics_url = self.host.join("/metrics.json")?;
+        let metrics_url =
+            reqwest::Url::parse(&format!("http://{}:{}/metrics.json", self.host, self.port))?;
         Ok(Client {
             client,
+            hostname: self.host.clone(),
             metrics_url,
+            refresh: self.refresh.into(),
         })
     }
 }
 
 struct Client {
     client: reqwest::Client,
+    pub(crate) hostname: Arc<str>,
     pub(crate) metrics_url: reqwest::Url,
+    pub(crate) refresh: Duration,
 }
 
 impl Client {
@@ -64,6 +75,10 @@ impl Client {
             .with_context(|| format!("sending request to {} failed", self.metrics_url))?;
         tracing::debug!("received response: {:?}", rsp.status());
         rsp.json().await.context("reading request body failed")
+    }
+
+    fn refresh_interval(&self) -> tokio::time::Interval {
+        tokio::time::interval(self.refresh)
     }
 }
 
@@ -81,7 +96,10 @@ async fn main() -> anyhow::Result<()> {
     let client = args.client()?;
     match args.display {
         DisplayCommand::Terminal(cmd) => cmd.run(client).await,
-        DisplayCommand::Window(cmd) => cmd.run(client).await,
+        DisplayCommand::Window(cmd) => {
+            tracing::info!("running in windowed mode: {cmd:?}");
+            cmd.run(client).await
+        }
         DisplayCommand::Ssd1680(cmd) => cmd.run(client).await,
     }
 }

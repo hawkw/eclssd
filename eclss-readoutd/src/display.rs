@@ -77,7 +77,7 @@ impl WindowArgs {
         let mut interval = tokio::time::interval(self.refresh.into());
         loop {
             let metrics = client.fetch().await?;
-
+            tracing::trace!(?metrics);
             display.clear(BinaryColor::Off)?;
             render_embedded_graphics(&mut display, style, &metrics)?;
             window.update(&display);
@@ -108,9 +108,10 @@ where
     const HUMIDITY: &str = "HUMIDITY:";
     const TVOC: &str = "TVOC:";
     const CO2: &str = "CO2:";
+    const STATION: &str = "STATION:";
 
     const WIDTH: usize = {
-        let labels = [TEMP, HUMIDITY, TVOC, CO2];
+        let labels = [STATION, TEMP, HUMIDITY, TVOC, CO2];
         let mut max = 0;
         let mut i = 0;
         while i < labels.len() {
@@ -124,6 +125,33 @@ where
     };
 
     let text_style = TextStyleBuilder::new()
+        .alignment(Alignment::Center)
+        .baseline(embedded_graphics::text::Baseline::Top)
+        .line_height(LineHeight::Percent(110))
+        .build();
+    let center = target.bounding_box().center();
+
+    let pt = Text::with_text_style(
+        "ECLSS READOUT\n",
+        Point::new(center.x, OFFSET),
+        char_style,
+        text_style,
+    )
+    .draw(target)
+    .map_err(|e| anyhow::anyhow!("error drawing title: {e:?}"))?;
+
+    let mut pt = Point::new(OFFSET, pt.y);
+    if let Some(location) = metrics.location.as_ref() {
+        pt = Text::with_text_style(
+            &format!("{STATION:<WIDTH$}: {location}\n"),
+            pt,
+            char_style,
+            text_style,
+        )
+        .draw(target)
+        .map_err(|e| anyhow::anyhow!("error drawing location: {e:?}"))?;
+    }
+    let text_style = TextStyleBuilder::new()
         .alignment(Alignment::Left)
         .baseline(embedded_graphics::text::Baseline::Top)
         .line_height(LineHeight::Percent(110))
@@ -135,7 +163,7 @@ where
         })
         .unwrap_or_else(|| format!("{TEMP:<WIDTH$} ??? °C / ??? °F\n"));
 
-    let pt = Text::with_text_style(&temp, Point::new(OFFSET, OFFSET), char_style, text_style)
+    let pt = Text::with_text_style(&temp, pt, char_style, text_style)
         .draw(target)
         .map_err(|e| anyhow::anyhow!("error drawing temperature: {e:?}"))?;
 

@@ -8,6 +8,7 @@ use embedded_hal_async::{delay::DelayNs, i2c::I2c};
 use linux_embedded_hal::I2cdev;
 use std::future::Future;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::Duration;
 
 #[cfg(feature = "mdns")]
@@ -36,7 +37,7 @@ struct Args {
     trace: TraceArgs,
 
     #[clap(long = "location", env = "ECLSS_LOCATION")]
-    location: Option<String>,
+    location: Option<Arc<str>>,
 
     /// enable mDNS advertisement
     #[clap(
@@ -125,10 +126,13 @@ async fn main() -> anyhow::Result<()> {
 
     let listener = tokio::net::TcpListener::bind(args.listen_addr).await?;
     tracing::info!(listen_addr = ?args.listen_addr, "listening...");
-    let server = tokio::spawn(async move {
-        eclss_axum::axum::serve(listener, eclss_axum::app(eclss))
-            .await
-            .unwrap();
+    let server = tokio::spawn({
+        let location = args.location.clone();
+        async move {
+            eclss_axum::axum::serve(listener, eclss_axum::app(eclss, location))
+                .await
+                .unwrap();
+        }
     });
 
     if args.mdns {

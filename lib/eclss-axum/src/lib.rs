@@ -7,14 +7,19 @@ use axum::{
     Router,
 };
 use eclss::{sensor::Registry, Eclss, SensorMetrics};
+use std::sync::Arc;
 
 #[derive(Clone)]
 struct AppState<const SENSORS: usize> {
     metrics: &'static SensorMetrics,
     sensors: &'static Registry<SENSORS>,
+    location: Option<Arc<str>>,
 }
 
-pub fn app<I, const SENSORS: usize>(eclss: &'static Eclss<I, { SENSORS }>) -> Router {
+pub fn app<I, const SENSORS: usize>(
+    eclss: &'static Eclss<I, { SENSORS }>,
+    location: Option<Arc<str>>,
+) -> Router {
     Router::new()
         .route("/metrics", get(get_metrics))
         .route("/metrics.json", get(get_metrics_json))
@@ -23,6 +28,7 @@ pub fn app<I, const SENSORS: usize>(eclss: &'static Eclss<I, { SENSORS }>) -> Ro
         .with_state(AppState {
             metrics: eclss.metrics(),
             sensors: eclss.sensors(),
+            location,
         })
         .fallback(not_found)
 }
@@ -35,10 +41,22 @@ async fn get_metrics<const SENSORS: usize>(
     resp
 }
 
+#[derive(serde::Serialize)]
+struct MetricsResponse {
+    #[serde(flatten)]
+    metrics: &'static SensorMetrics,
+    location: Option<Arc<str>>,
+}
+
 async fn get_metrics_json<const SENSORS: usize>(
-    State(AppState { metrics, .. }): State<AppState<{ SENSORS }>>,
-) -> Json<&'static SensorMetrics> {
-    Json(metrics)
+    State(AppState {
+        metrics, location, ..
+    }): State<AppState<{ SENSORS }>>,
+) -> Json<MetricsResponse> {
+    Json(MetricsResponse {
+        metrics,
+        location: location.clone(),
+    })
 }
 
 async fn get_sensors<const SENSORS: usize>(
