@@ -78,13 +78,13 @@ where
             .serial()
             .await
             .context("error reading SGP30 serial")?;
-        tracing::info!("SGP30 serial number: {serial:?}");
+        info!("SGP30 serial number: {serial:?}");
         let featureset = self
             .sensor
             .get_feature_set()
             .await
             .context("error reading SGP30 feature set")?;
-        tracing::info!("SGP30 featureset: {featureset:?}");
+        info!("SGP30 featureset: {featureset:?}");
         let selftest = self
             .sensor
             .selftest()
@@ -100,7 +100,7 @@ where
             .context("error initializing SGP30")?;
 
         if let Some(ref baseline) = self.last_good_baseline {
-            tracing::info!("Setting {NAME} baseline to {baseline:?}");
+            info!("setting {NAME} baseline to {baseline:?}");
             self.sensor
                 .set_baseline(baseline)
                 .await
@@ -150,7 +150,7 @@ where
             .await
             .context("error reading SGP30 measurements")?;
 
-        tracing::debug!("{NAME}: CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
+        debug!("{NAME}: CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
 
         match self
             .sensor
@@ -159,17 +159,16 @@ where
             .map_err(Sgp30Error::from)
         {
             Ok(sgp30::RawSignals { ethanol, h2 }) => {
-                tracing::debug!("{NAME}: H₂: {h2}, Ethanol: {ethanol}");
+                debug!("{NAME}: H₂: {h2}, Ethanol: {ethanol}");
             }
-            Err(error) => tracing::warn!(%error, "{NAME}: error reading raw signals: {error}"),
+            Err(error) => warn!(%error, "{NAME}: error reading raw signals: {error}"),
         }
 
         // Skip updating metrics until calibration completes.
         if self.calibration_polls <= 15 {
-            tracing::info!(
+            info!(
                 ?baseline,
-                "{NAME} calibrating baseline for {}/15 seconds...",
-                self.calibration_polls,
+                "{NAME} calibrating baseline for {}/15 seconds...", self.calibration_polls,
             );
             self.calibration_polls += 1;
             return Ok(());

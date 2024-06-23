@@ -79,7 +79,7 @@ where
             .initialize(&config)
             .await
             .context("error initializing BME680")?;
-        tracing::info!("initialized {NAME} with config: {config:?}");
+        info!("initialized {NAME} with config: {config:?}");
         Ok(())
     }
 
@@ -91,10 +91,10 @@ where
                 // don't get into long backoffs on timeouts...
                 Err(BmeError::MeasuringTimeOut) if timeouts < 5 => {
                     timeouts += 1;
-                    tracing::info!("{NAME} measurement timed out, retrying...");
+                    info!("{NAME} measurement timed out, retrying...");
                 }
                 Err(BmeError::MeasuringTimeOut) => {
-                    tracing::warn!("{NAME}  timed out a bunch of times, giving up...");
+                    warn!("{NAME}  timed out a bunch of times, giving up...");
                     return Ok(());
                 }
                 Err(e) => return Err(e).context("error reading BME680 measurements"),
@@ -114,13 +114,11 @@ where
         self.pressure.set_value(pressure.into());
         self.temp.set_value(temperature.into());
         self.rel_humidity.set_value(humidity.into());
-        tracing::debug!(
-            "{NAME}: Temp: {temperature}°C, Humidity: {humidity}%, Pressure: {pressure} hPa"
-        );
+        debug!("{NAME}: Temp: {temperature}°C, Humidity: {humidity}%, Pressure: {pressure} hPa");
 
         if let Some(gas_resistance) = gas_resistance {
             self.gas_resistance.set_value(gas_resistance.into());
-            tracing::debug!("{NAME}: Gas resistance: {gas_resistance} Ohms");
+            debug!("{NAME}: Gas resistance: {gas_resistance} Ohms");
         }
 
         if self.polls.0 % self.abs_humidity_interval == 0 {
