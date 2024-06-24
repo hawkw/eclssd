@@ -234,7 +234,7 @@
                   # Ensure the service has access to the network so that it can
                   # bind its listener.
                   PrivateNetwork = false;
-                  StateDirectory = "/var/lib/eclssd";
+                  StateDirectory = "eclssd";
                   # Misc hardening --- eclssd shouldn't need any filesystem
                   # access other than `/dev/i2c-*`.
                   PrivateTmp = true;
