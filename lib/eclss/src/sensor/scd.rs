@@ -72,12 +72,14 @@ impl Shared {
     fn record_measurement(&mut self, co2: u16, temperature: f32, humidity: f32) {
         if self.polls.should_log_info() {
             info!(
-                "{:>9}: Temp: {temperature:>3.2}°C, Humidity: {humidity:>3.2}%, CO₂: {co2:>4} ppm",
+                "{:>8}: Temp: {temperature:>3.2}°C, Humidity: {humidity:>3.2}%, \
+                CO₂: {co2:>4} ppm",
                 self.name
             );
         } else {
             debug!(
-                "{}: Temp: {temperature}°C, Humidity: {humidity}%, CO₂: {co2} ppm",
+                "{:>8}: Temp: {temperature}°C, Humidity: {humidity}%, \
+                CO₂: {co2} ppm",
                 self.name
             );
         }
@@ -91,11 +93,11 @@ impl Shared {
             self.abs_humidity.set_value(abs_humidity.into());
             if self.polls.should_log_info() {
                 info!(
-                    "{:>9}: Absolute humidity: {abs_humidity:3.2} g/m³",
+                    "{:>8}: Absolute humidity: {abs_humidity:3.2} g/m³",
                     self.name
                 );
             } else {
-                debug!("{}: Absolute humidity: {abs_humidity} g/m³", self.name);
+                debug!("{:>8}: Absolute humidity: {abs_humidity} g/m³", self.name);
             }
         }
 

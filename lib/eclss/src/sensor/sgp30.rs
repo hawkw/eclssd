@@ -118,7 +118,7 @@ where
         match self.store.load::<StoredBaseline>().await {
             Ok(Some(baseline)) => {
                 let baseline = baseline.into();
-                info!("{NAME} loaded baseline from storage: {baseline:?}");
+                info!("{NAME:>8}: loaded baseline from storage: {baseline:?}");
                 self.last_good_baseline = Some(baseline);
             }
             Ok(None) => {}
@@ -206,7 +206,7 @@ where
             .await
             .map_err(|e| {
                 let error = Sgp30Error::from(e);
-                warn!(%error, "{NAME}: error reading baseline: {error}");
+                warn!(%error, "{NAME:>8}: error reading baseline: {error}");
             })
             .ok();
 
@@ -225,19 +225,19 @@ where
             .await
             .map_err(|e| {
                 let error = Sgp30Error::from(e);
-                warn!(%error, "{NAME}: error reading raw signals: {error}");
+                warn!(%error, "{NAME:>8}: error reading raw signals: {error}");
             })
             .ok();
 
         if self.polls.should_log_info() {
-            info!("{NAME:>9}: CO₂eq: {co2eq_ppm:>4} ppm, TVOC: {tvoc_ppb:>4} ppb");
+            info!("{NAME:>8}: CO₂eq: {co2eq_ppm:>4} ppm, TVOC: {tvoc_ppb:>4} ppb");
             if let Some(sgp30::RawSignals { h2, ethanol }) = raw {
-                info!("{NAME:>9}: H₂: {h2:>4}, Ethanol: {ethanol:>4}");
+                info!("{NAME:>8}: H₂: {h2:>4}, Ethanol: {ethanol:>4}");
             }
         } else {
-            debug!("{NAME}: CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
+            debug!("{NAME:>8}: CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
             if let Some(sgp30::RawSignals { h2, ethanol }) = raw {
-                debug!("{NAME}: H₂: {h2}, Ethanol: {ethanol}");
+                debug!("{NAME:>8}: H₂: {h2}, Ethanol: {ethanol}");
             }
         }
 
@@ -245,7 +245,7 @@ where
         if self.calibration_polls <= 15 {
             info!(
                 ?baseline,
-                "{NAME} calibrating baseline for {}/15 seconds...", self.calibration_polls,
+                "{NAME:>8}: calibrating baseline for {}/15 seconds...", self.calibration_polls,
             );
             self.calibration_polls += 1;
             return Ok(());
@@ -263,7 +263,7 @@ where
 
         if let Some(baseline) = baseline {
             if self.last_good_baseline.as_ref() != Some(&baseline) {
-                trace!("{NAME}: new basaeline: {baseline:?}");
+                trace!("{NAME:>8}: new basaeline: {baseline:?}");
                 let stored = StoredBaseline::from(baseline.clone());
                 self.last_good_baseline = Some(baseline);
                 if let Err(error) = self.store.store(&stored).await {
@@ -301,12 +301,14 @@ impl<E: i2c::Error> SensorError for Sgp30Error<E> {
 impl<E: fmt::Display> fmt::Display for Sgp30Error<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Sgp30(sgp30::Error::I2cRead(i)) => write!(f, "{NAME} I2C read error: {i}"),
-            Self::Sgp30(sgp30::Error::I2cWrite(i)) => write!(f, "{NAME} I2C write error: {i}"),
-            Self::Sgp30(sgp30::Error::Crc) => write!(f, "{NAME} CRC checksum validation failed"),
-            Self::Sgp30(sgp30::Error::NotInitialized) => write!(f, "{NAME} not initialized"),
-            Self::SelfTestFailed => write!(f, "{NAME} self-test failed"),
-            Self::Saturated => write!(f, "{NAME} TVOC measurement saturated"),
+            Self::Sgp30(sgp30::Error::I2cRead(i)) => write!(f, "{NAME:>8}: I2C read error: {i}"),
+            Self::Sgp30(sgp30::Error::I2cWrite(i)) => write!(f, "{NAME:>8}: I2C write error: {i}"),
+            Self::Sgp30(sgp30::Error::Crc) => {
+                write!(f, "{NAME:>8}: CRC checksum validation failed")
+            }
+            Self::Sgp30(sgp30::Error::NotInitialized) => write!(f, "{NAME:>8}: not initialized"),
+            Self::SelfTestFailed => write!(f, "{NAME:>8}: self-test failed"),
+            Self::Saturated => write!(f, "{NAME:>8}: TVOC measurement saturated"),
         }
     }
 }

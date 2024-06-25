@@ -134,14 +134,14 @@ where
             if let (Some(temp), Some(rh), Some(voc), Some(nox)) =
                 (temp, rel_humidity, voc_index, nox_index)
             {
-                info!("{NAME:>9}: Temp: {temp:>3.2}°C, Humidity: {rh:>3.2}%, VOC Index: {voc:>4.2}, NOx Index: {nox:>4.2}");
+                info!("{NAME:>8}: Temp: {temp:>3.2}°C, Humidity: {rh:>3.2}%, VOC Index: {voc:>4.2}, NOx Index: {nox:>4.2}");
             }
         } else {
             debug!(
-                "{NAME:>9}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, \
+                "{NAME:>8}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, \
                 VOC Index: {voc_index:?}, NOx Index: {nox_index:?}, ready: {ready}"
             );
-            debug!("{NAME:>9}: PM1.0: {pm1_0:?}, PM2.5: {pm2_5:?}, PM4.0: {pm4_0:?}, PM10.0: {pm10_0:?}, ready: {ready}");
+            debug!("{NAME:>8}: PM1.0: {pm1_0:?}, PM2.5: {pm2_5:?}, PM4.0: {pm4_0:?}, PM10.0: {pm10_0:?}, ready: {ready}");
         }
 
         if ready {
@@ -171,9 +171,9 @@ where
                     let abs_humidity = super::absolute_humidity(temp, humidity);
                     self.abs_humidity.set_value(abs_humidity.into());
                     if self.polls.should_log_info() {
-                        info!("{NAME:>9}: Absolute humidity: {abs_humidity:>3.2} g/m³",);
+                        info!("{NAME:>8}: Absolute humidity: {abs_humidity:>3.2} g/m³",);
                     } else {
-                        debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³",);
+                        debug!("{NAME:>8}: Absolute humidity: {abs_humidity} g/m³",);
                     }
                 }
             }
@@ -184,9 +184,9 @@ where
         match self.sensor.read_warm_start_parameter(&mut self.delay).await {
             Ok(param) => {
                 self.last_warm_start_param = Some(param);
-                trace!("{NAME}: Warm start parameter: {param}");
+                trace!("{NAME:>8}: Warm start parameter: {param}");
             }
-            Err(error) => warn!("{NAME}: error reading warm start parameter: {error}"),
+            Err(error) => warn!("{NAME:>8}: error reading warm start parameter: {error}"),
         }
 
         Ok(())

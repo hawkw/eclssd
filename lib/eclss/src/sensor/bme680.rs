@@ -73,7 +73,7 @@ where
             .initialize(&config)
             .await
             .context("error initializing BME680")?;
-        info!("initialized {NAME} with config: {config:?}");
+        info!("{NAME:>8}: initialized with config: {config:?}");
         Ok(())
     }
 
@@ -85,10 +85,10 @@ where
                 // don't get into long backoffs on timeouts...
                 Err(BmeError::MeasuringTimeOut) if timeouts < 5 => {
                     timeouts += 1;
-                    info!("{NAME} measurement timed out, retrying...");
+                    info!("{NAME:>8}: measurement timed out, retrying...");
                 }
                 Err(BmeError::MeasuringTimeOut) => {
-                    warn!("{NAME}  timed out a bunch of times, giving up...");
+                    warn!("{NAME:>8}: timed out a bunch of times, giving up...");
                     return Ok(());
                 }
                 Err(e) => return Err(e).context("error reading BME680 measurements"),
@@ -109,25 +109,30 @@ where
         self.temp.set_value(temperature.into());
         self.rel_humidity.set_value(humidity.into());
         if self.polls.should_log_info() {
-            info!("{NAME:>9}: Temp: {temperature:>3.2}°C, Humidity: {humidity:>3.2}%, Pressure: {pressure:>3.2} hPa");
+            info!(
+                "{NAME:>8}: Temp: {temperature:>3.2}°C, \
+                Humidity: {humidity:>3.2}%, \
+                Pressure: {pressure:>3.2} hPa",
+            );
         } else {
             debug!(
-                "{NAME}: Temp: {temperature}°C, Humidity: {humidity}%, Pressure: {pressure} hPa"
+                "{NAME:>8}: Temp: {temperature}°C, Humidity: {humidity}%, \
+                 Pressure: {pressure} hPa"
             );
         }
 
         if let Some(gas_resistance) = gas_resistance {
             self.gas_resistance.set_value(gas_resistance.into());
-            debug!("{NAME}: Gas resistance: {gas_resistance} Ohms");
+            debug!("{NAME:>8}: Gas resistance: {gas_resistance} Ohms");
         }
 
         if self.polls.should_calc_abs_humidity() {
             let abs_humidity = super::absolute_humidity(temperature, humidity);
             self.abs_humidity.set_value(abs_humidity.into());
             if self.polls.should_log_info() {
-                info!("{NAME:>9}: Absolute humidity: {abs_humidity:3.2} g/m³");
+                info!("{NAME:>8}: Absolute humidity: {abs_humidity:3.2} g/m³");
             } else {
-                debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³");
+                debug!("{NAME:>8}: Absolute humidity: {abs_humidity} g/m³");
             }
         }
 

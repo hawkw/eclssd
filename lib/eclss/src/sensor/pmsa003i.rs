@@ -80,8 +80,8 @@ where
                 concentrations.pm1_0, concentrations.pm2_5, concentrations.pm10_0
             );
         }
-        debug!("{NAME}: particulate concentrations:\n{concentrations:>#3}");
-        debug!("{NAME}: particulates {counts:>#3}");
+        debug!("{NAME:>8}: particulate concentrations:\n{concentrations:>#3}");
+        debug!("{NAME:>8}: particulates {counts:>#3}");
 
         macro_rules! set_metrics {
             ($src:ident => $($name:ident),+) => {

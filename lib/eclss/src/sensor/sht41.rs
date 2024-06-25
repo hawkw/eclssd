@@ -94,18 +94,18 @@ where
         self.temp.set_value(temp);
         self.rel_humidity.set_value(rel_humidity);
         if self.polls.should_log_info() {
-            info!("{NAME:>9}: Temp: {temp:>3.2}°C, Humidity: {rel_humidity:>3.2}%");
+            info!("{NAME:>8}: Temp: {temp:>3.2}°C, Humidity: {rel_humidity:>3.2}%");
         } else {
-            debug!("{NAME}: Temp: {temp}°C, Humidity: {rel_humidity}%");
+            debug!("{NAME:>8}: Temp: {temp}°C, Humidity: {rel_humidity}%");
         }
 
         if self.polls.should_calc_abs_humidity() {
             let abs_humidity = super::absolute_humidity(temp as f32, rel_humidity as f32);
             self.abs_humidity.set_value(abs_humidity.into());
             if self.polls.should_log_info() {
-                info!("{NAME:>9}: Absolute humidity: {abs_humidity:02.2} g/m³");
+                info!("{NAME:>8}: Absolute humidity: {abs_humidity:02.2} g/m³");
             } else {
-                debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³");
+                debug!("{NAME:>8}: Absolute humidity: {abs_humidity} g/m³");
             }
         }
 
@@ -134,7 +134,7 @@ impl<E: fmt::Display> fmt::Display for Sht4xError<E> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self(sht4x::Error::I2c(i)) => fmt::Display::fmt(i, f),
-            Self(sht4x::Error::Crc) => write!(f, "{NAME} CRC checksum validation failed"),
+            Self(sht4x::Error::Crc) => write!(f, "{NAME:>8}: CRC checksum validation failed"),
             Self(_) => write!(f, "unknown {NAME} error"),
         }
     }

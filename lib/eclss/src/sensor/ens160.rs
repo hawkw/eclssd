@@ -77,14 +77,14 @@ where
             .part_id()
             .await
             .context("error reading ENS160 part ID")?;
-        info!("{NAME} part ID: 0x{part_id:04x}");
+        info!("{NAME:>8}: part ID: 0x{part_id:04x}");
 
         let (min, minor, patch) = self
             .sensor
             .firmware_version()
             .await
             .context("error reading ENS160 firmware version")?;
-        info!("{NAME} firmware version: v{min}.{minor}.{patch}");
+        info!("{NAME:>8}: firmware version: v{min}.{minor}.{patch}");
 
         self.sensor
             .operational()
@@ -109,13 +109,13 @@ where
             };
             match validity {
                 ens160::Validity::NormalOperation => {
-                    info!("{NAME} is ready");
+                    info!("{NAME:>8}: is ready");
                     return Ok(());
                 }
                 ens160::Validity::WarmupPhase => {
                     let warmup_secs = 30 * warmup;
                     info!(
-                        "{NAME} has been warming up for {warmup_secs} seconds \
+                        "{NAME:>8}: has been warming up for {warmup_secs} seconds \
                         ({} remaining)",
                         180usize.saturating_sub(warmup_secs)
                     );
@@ -125,7 +125,7 @@ where
                 ens160::Validity::InitStartupPhase => {
                     let setup_mins = 2 * setup;
                     info!(
-                        "{NAME} has been performing initial setup for \
+                        "{NAME:>8}: has been performing initial setup for \
                         {setup_mins} minutes ({} remaining)",
                         60usize.saturating_sub(setup_mins),
                     );
@@ -147,7 +147,7 @@ where
             let integer = avg_temp.trunc() as i16 * 100;
             let fractional = (avg_temp.fract() * 100.0) as i16;
             let temp = integer + fractional;
-            debug!("setting ENS160 temp compensation to {temp} ({avg_temp} C)");
+            debug!("{NAME:>8}: setting temp compensation to {temp} ({avg_temp} C)");
             self.sensor
                 .set_temp(temp)
                 .await
@@ -160,7 +160,7 @@ where
             let integer = avg_rh.trunc() as i16 * 100;
             let fractional = (avg_rh.fract() * 100.0) as i16;
             let temp = integer + fractional;
-            debug!("setting {NAME} relative humidity compensation to {temp} ({avg_rh}%)");
+            debug!("{NAME:>8}: setting relative humidity compensation to {temp} ({avg_rh}%)");
             self.sensor
                 .set_temp(temp)
                 .await
@@ -177,12 +177,12 @@ where
             // we are in operating mode. read the sensor!
             ens160::Validity::NormalOperation => {}
             ens160::Validity::InvalidOutput => {
-                warn!("ENS160 status: invalid output!");
+                warn!("{NAME:>8}: invalid output!");
                 return Err(Ens160Error::Invalid.into());
             }
             phase => {
                 warn!(
-                    "Unexpected ENS160 setup phase {phase:?}, the sensor \
+                    "{NAME:>8}: Unexpected setup phase {phase:?}, the sensor \
                     should already be in operational mode!"
                 );
                 return Ok(());
@@ -196,7 +196,7 @@ where
             .await
             .context("error reading ENS160 tVOC")?;
         if !should_log_info {
-            debug!("{NAME}: TVOC: {tvoc} ppb",);
+            debug!("{NAME:>8}: TVOC: {tvoc} ppb",);
         }
         self.tvoc.set_value(tvoc.into());
 
@@ -207,12 +207,12 @@ where
             .context("error reading ENS160 eCO2")?;
         let eco2 = *eco2;
         if !should_log_info {
-            debug!("{NAME}: CO₂eq: {eco2} ppm");
+            debug!("{NAME:>8}: CO₂eq: {eco2} ppm");
         }
         self.eco2.set_value(eco2.into());
 
         if should_log_info {
-            info!("{NAME:>9}: CO₂eq: {eco2:>4} ppm, TVOC: {tvoc:>4} ppb");
+            info!("{NAME:>8}: CO₂eq: {eco2:>4} ppm, TVOC: {tvoc:>4} ppb");
         }
 
         self.polls.add();
