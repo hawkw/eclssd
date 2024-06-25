@@ -99,6 +99,8 @@ where
             particles_5_0um,
             particles_10_0um
         );
+
+        self.polls.add();
         Ok(())
     }
 }
