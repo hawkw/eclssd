@@ -1,4 +1,5 @@
-use crate::{error::SensorError, retry, Eclss};
+use crate::{error::SensorError, Config, Eclss};
+use core::num::Wrapping;
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::time::Duration;
 pub use eclss_api::SensorName;
@@ -65,16 +66,15 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
         tracing::instrument(
             name = "sensor",
             level = tracing::Level::INFO,
-            skip(self, retry_backoff, delay, sensor),
+            skip(self, delay, sensor, config),
             fields(sensor = %S::NAME)
         )
     )]
     pub async fn run_sensor<S>(
         &'static self,
         mut sensor: S,
-        retry_backoff: impl Into<retry::ExpBackoff>,
+        config: Config,
         mut delay: impl DelayNs,
-        max_init_attempts: Option<usize>,
     ) -> Result<(), &'static str>
     where
         S: Sensor,
@@ -91,7 +91,7 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
                 S::NAME,
                 State {
                     poll_interval: S::POLL_INTERVAL,
-                    backoff: retry_backoff.into(),
+                    backoff: config.retries.backoff(),
                     ..Default::default()
                 },
             )
@@ -123,7 +123,7 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
                     S::NAME
                 );
 
-                if Some(attempts) == max_init_attempts {
+                if Some(attempts) == config.max_init_attempts {
                     error!(
                         "Giving up on {} after {attempts} attempts to {what_are_we_doing}",
                         S::NAME
@@ -172,6 +172,46 @@ impl<I, const SENSORS: usize> Eclss<I, { SENSORS }> {
 }
 
 pub type Registry<const N: usize> = RegistryMap<SensorName, State, { N }>;
+
+pub(crate) struct PollCount {
+    polls: Wrapping<u32>,
+    abs_humidity_interval: u32,
+    log_info_interval: u32,
+}
+
+impl Config {
+    pub(in crate::sensor) fn poll_counter(&self, poll_interval: Duration) -> PollCount {
+        let log_info_interval = {
+            let mut interval = self.log_reading_interval;
+            let mut i = 0;
+            while !interval.is_zero() {
+                interval = interval.saturating_sub(poll_interval);
+                i += 1;
+            }
+            i
+        };
+
+        PollCount {
+            polls: Wrapping(0),
+            abs_humidity_interval: self.abs_humidity_interval,
+            log_info_interval,
+        }
+    }
+}
+
+impl PollCount {
+    pub(crate) fn add(&mut self) {
+        self.polls += 1;
+    }
+
+    pub fn should_calc_abs_humidity(&self) -> bool {
+        self.polls.0 % self.abs_humidity_interval == 0
+    }
+
+    pub fn should_log_info(&self) -> bool {
+        self.polls.0 % self.log_info_interval == 0
+    }
+}
 
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]

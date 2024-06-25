@@ -59,6 +59,7 @@ impl Args {
 
 struct Client {
     client: reqwest::Client,
+    #[allow(dead_code)]
     pub(crate) hostname: Arc<str>,
     pub(crate) metrics_url: reqwest::Url,
     pub(crate) refresh: Duration,

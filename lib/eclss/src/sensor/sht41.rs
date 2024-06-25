@@ -4,7 +4,7 @@ use crate::{
     sensor::Sensor,
     SharedBus,
 };
-use core::{fmt, num::Wrapping, time::Duration};
+use core::{fmt, time::Duration};
 use eclss_api::SensorName;
 use embedded_hal_async::{
     delay::DelayNs,
@@ -13,15 +13,16 @@ use embedded_hal_async::{
 use sht4x::AsyncSht4x;
 pub use sht4x::Precision;
 
+use super::PollCount;
+
 #[must_use = "sensors do nothing unless polled"]
 pub struct Sht41<I: 'static, D> {
     sensor: AsyncSht4x<&'static SharedBus<I>, D>,
     temp: &'static Gauge,
     rel_humidity: &'static Gauge,
     abs_humidity: &'static Gauge,
-    abs_humidity_interval: usize,
     precision: Precision,
-    polls: Wrapping<usize>,
+    polls: PollCount,
     delay: D,
 }
 
@@ -36,6 +37,7 @@ where
 {
     pub fn new<const SENSORS: usize>(
         eclss: &'static crate::Eclss<I, { SENSORS }>,
+        config: &crate::Config,
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
@@ -48,17 +50,9 @@ where
             temp: metrics.temp_c.register(NAME).unwrap(),
             rel_humidity: metrics.rel_humidity_percent.register(NAME).unwrap(),
             abs_humidity: metrics.abs_humidity_grams_m3.register(NAME).unwrap(),
-            polls: Wrapping(0),
-            abs_humidity_interval: 1,
+            polls: config.poll_counter(POLL_INTERVAL),
             precision: Precision::Medium,
             delay,
-        }
-    }
-
-    pub fn with_abs_humidity_interval(self, interval: usize) -> Self {
-        Self {
-            abs_humidity_interval: interval,
-            ..self
         }
     }
 
@@ -67,13 +61,15 @@ where
     }
 }
 
+const POLL_INTERVAL: Duration = Duration::from_secs(1);
+
 impl<I, D> Sensor for Sht41<I, D>
 where
     I: I2c + 'static,
     D: DelayNs,
 {
     const NAME: SensorName = NAME;
-    const POLL_INTERVAL: Duration = Duration::from_secs(1);
+    const POLL_INTERVAL: Duration = POLL_INTERVAL;
     type Error = EclssError<Sht4xError<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
@@ -97,15 +93,23 @@ where
         let rel_humidity = reading.humidity_percent().to_num::<f64>();
         self.temp.set_value(temp);
         self.rel_humidity.set_value(rel_humidity);
-        debug!("{NAME}: Temp: {temp}°C, Humidity: {rel_humidity}%");
-
-        if self.polls.0 % self.abs_humidity_interval == 0 {
-            let abs_humidity = super::absolute_humidity(temp as f32, rel_humidity as f32);
-            self.abs_humidity.set_value(abs_humidity.into());
-            debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³");
+        if self.polls.should_log_info() {
+            info!("{NAME:>9}: Temp: {temp:>3.2}°C, Humidity: {rel_humidity:>3.2}%");
+        } else {
+            debug!("{NAME}: Temp: {temp}°C, Humidity: {rel_humidity}%");
         }
 
-        self.polls += 1;
+        if self.polls.should_calc_abs_humidity() {
+            let abs_humidity = super::absolute_humidity(temp as f32, rel_humidity as f32);
+            self.abs_humidity.set_value(abs_humidity.into());
+            if self.polls.should_log_info() {
+                info!("{NAME:>9}: Absolute humidity: {abs_humidity:02.2} g/m³");
+            } else {
+                debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³");
+            }
+        }
+
+        self.polls.add();
 
         Ok(())
     }

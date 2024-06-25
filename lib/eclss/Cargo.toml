@@ -8,6 +8,7 @@ edition = "2021"
 [features]
 bme680 = ["dep:bosch-bme680"]
 serde = ["dep:serde", "tinymetrics/serde"]
+clap = ["dep:clap", "dep:humantime", "std"]
 scd30 = ["dep:libscd", "libscd/scd30"]
 scd40 = ["dep:libscd", "libscd/scd40"]
 scd41 = ["dep:libscd", "libscd/scd41"]
@@ -19,6 +20,8 @@ std = []
 
 [dependencies]
 bosch-bme680 = { workspace = true, optional = true, features = ["embedded-hal-async"] }
+humantime = { workspace = true, optional = true }
+clap = { workspace = true, optional = true, default-features = false, features = ["derive"] }
 eclss-api = { workspace = true, features = ["fmt", "tinymetrics"] }
 ens160 = { workspace = true, optional = true, features = ["async"] }
 embedded-hal-async = { workspace = true }

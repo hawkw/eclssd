@@ -1,7 +1,7 @@
 use crate::{
     error::{Context, EclssError, SensorError},
     metrics::{Gauge, HUMIDITY_METRICS, TEMP_METRICS},
-    sensor::Sensor,
+    sensor::{PollCount, Sensor},
     SharedBus,
 };
 use core::fmt;
@@ -17,6 +17,7 @@ pub struct Ens160<I: 'static, D> {
     temp: &'static tinymetrics::GaugeFamily<'static, TEMP_METRICS, SensorName>,
     rel_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorName>,
     delay: D,
+    polls: PollCount,
 }
 
 #[derive(Debug)]
@@ -34,12 +35,15 @@ const SECOND_MS: u32 = 1_000;
 const WARMUP_DELAY: u32 = 30 * SECOND_MS;
 const INIT_SETUP_DELAY: u32 = 120 * SECOND_MS;
 
+const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
+
 impl<I, D> Ens160<I, D>
 where
     I: I2c<i2c::SevenBitAddress>,
 {
     pub fn new<const SENSORS: usize>(
         eclss: &'static crate::Eclss<I, { SENSORS }>,
+        config: &crate::Config,
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
@@ -49,6 +53,7 @@ where
             eco2: metrics.eco2_ppm.register(NAME).unwrap(),
             temp: &metrics.temp_c,
             rel_humidity: &metrics.rel_humidity_percent,
+            polls: config.poll_counter(POLL_INTERVAL),
             delay,
         }
     }
@@ -63,7 +68,7 @@ where
     D: DelayNs,
 {
     const NAME: SensorName = NAME;
-    const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
+    const POLL_INTERVAL: core::time::Duration = POLL_INTERVAL;
     type Error = EclssError<Ens160Error<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
@@ -184,12 +189,15 @@ where
             }
         }
 
+        let should_log_info = self.polls.should_log_info();
         let tvoc = self
             .sensor
             .tvoc()
             .await
             .context("error reading ENS160 tVOC")?;
-        debug!("{NAME}: TVOC: {tvoc} ppb",);
+        if !should_log_info {
+            debug!("{NAME}: TVOC: {tvoc} ppb",);
+        }
         self.tvoc.set_value(tvoc.into());
 
         let eco2 = self
@@ -198,8 +206,16 @@ where
             .await
             .context("error reading ENS160 eCO2")?;
         let eco2 = *eco2;
-        debug!("{NAME}: CO₂eq: {eco2} ppm");
+        if !should_log_info {
+            debug!("{NAME}: CO₂eq: {eco2} ppm");
+        }
         self.eco2.set_value(eco2.into());
+
+        if should_log_info {
+            info!("{NAME:>9}: CO₂eq: {eco2:>4} ppm, TVOC: {tvoc:>4} ppb");
+        }
+
+        self.polls.add();
 
         Ok(())
     }

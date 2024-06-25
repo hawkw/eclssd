@@ -3,6 +3,40 @@ use core::time::Duration;
 
 use embedded_hal_async::delay::DelayNs;
 
+#[derive(Copy, Clone, Debug)]
+#[cfg_attr(feature = "clap", derive(clap::Parser))]
+#[cfg_attr(feature = "clap", clap(next_help_heading = "Sensor Retry Settings"))]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct RetryConfig {
+    /// Initial value for sensor retry backoffs
+    #[cfg_attr(
+        feature = "clap",
+        clap(
+            long,
+            default_value = "500ms",
+            value_parser = humantime::parse_duration,
+        )
+    )]
+    pub initial_backoff: Duration,
+
+    /// Maximum backoff duration for sensor retries
+    #[cfg_attr(
+        feature = "clap",
+        clap(
+            long,
+            default_value = "60s",
+            value_parser = humantime::parse_duration,
+        ),
+    )]
+    pub max_backoff: Duration,
+}
+
+impl RetryConfig {
+    pub(crate) fn backoff(&self) -> ExpBackoff {
+        ExpBackoff::new(self.initial_backoff).with_max(self.max_backoff)
+    }
+}
+
 #[derive(Debug)]
 pub struct ExpBackoff {
     max_ms: usize,

@@ -21,10 +21,6 @@ pub(crate) struct WindowArgs {
 
 #[derive(Debug, Parser)]
 pub(crate) struct Ssd1680Args {
-    /// Refresh interval
-    #[clap(long, short, default_value = "1m")]
-    refresh: humantime::Duration,
-
     /// SPI device path.
     #[clap(long, short, default_value = "/dev/spidev0.0")]
     spidev: PathBuf,

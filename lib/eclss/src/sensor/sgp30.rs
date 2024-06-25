@@ -1,7 +1,7 @@
 use crate::{
     error::{Context, EclssError, SensorError},
     metrics::{Gauge, HUMIDITY_METRICS},
-    sensor::Sensor,
+    sensor::{PollCount, Sensor},
     storage::Store,
     SharedBus,
 };
@@ -20,8 +20,9 @@ pub struct Sgp30<I: 'static, D, S = ()> {
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
     abs_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorName>,
-    calibration_polls: usize,
+    calibration_polls: u32,
     last_good_baseline: Option<sgp30::Baseline>,
+    polls: PollCount,
     store: S,
 }
 
@@ -62,6 +63,7 @@ where
 {
     pub fn new<const SENSORS: usize>(
         eclss: &'static crate::Eclss<I, { SENSORS }>,
+        config: &crate::Config,
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
@@ -73,6 +75,7 @@ where
             calibration_polls: 0,
             last_good_baseline: None,
             store: (),
+            polls: config.poll_counter(POLL_INTERVAL),
         }
     }
 
@@ -85,6 +88,7 @@ where
             calibration_polls: self.calibration_polls,
             last_good_baseline: self.last_good_baseline,
             store,
+            polls: self.polls,
         }
     }
 }
@@ -92,6 +96,12 @@ where
 const ADAFRUIT_SGP30_ADDR: u8 = 0x58;
 const MAX_TVOC: u16 = 60_000;
 const NAME: SensorName = SensorName::Sgp30;
+// The SGP30 must be polled every second in order to ensure that the dynamic
+// baseline calibration algorithm works correctly. Performing a measurement
+// takes 12 ms, reading the raw H2 and ETOH signals takes 25 ms, and
+// setting the humidity compensation and/or reading the baseline takes up to
+// 10 ms, so we poll every 1000ms - 12ms - 10ms - 10ms - 25ms = 943 ms.
+const POLL_INTERVAL: Duration = Duration::from_millis(1000 - 12 - 10 - 10 - 25);
 
 impl<I, D, S> Sgp30<I, D, S>
 where
@@ -126,12 +136,7 @@ where
     S::Error: core::fmt::Display,
 {
     const NAME: SensorName = NAME;
-    // The SGP30 must be polled every second in order to ensure that the dynamic
-    // baseline calibration algorithm works correctly. Performing a measurement
-    // takes 12 ms, reading the raw H2 and ETOH signals takes 25 ms, and
-    // setting the humidity compensation and/or reading the baseline takes up to
-    // 10 ms, so we poll every 1000ms - 12ms - 10ms - 10ms - 25ms = 943 ms.
-    const POLL_INTERVAL: Duration = Duration::from_millis(1000 - 12 - 10 - 10 - 25);
+    const POLL_INTERVAL: Duration = POLL_INTERVAL;
     type Error = EclssError<Sgp30Error<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
@@ -214,18 +219,26 @@ where
             .await
             .context("error reading SGP30 measurements")?;
 
-        debug!("{NAME}: CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
-
-        match self
+        let raw = self
             .sensor
             .measure_raw_signals()
             .await
-            .map_err(Sgp30Error::from)
-        {
-            Ok(sgp30::RawSignals { ethanol, h2 }) => {
+            .map_err(|e| {
+                let error = Sgp30Error::from(e);
+                warn!(%error, "{NAME}: error reading raw signals: {error}");
+            })
+            .ok();
+
+        if self.polls.should_log_info() {
+            info!("{NAME:>9}: CO₂eq: {co2eq_ppm:>4} ppm, TVOC: {tvoc_ppb:>4} ppb");
+            if let Some(sgp30::RawSignals { h2, ethanol }) = raw {
+                info!("{NAME:>9}: H₂: {h2:>4}, Ethanol: {ethanol:>4}");
+            }
+        } else {
+            debug!("{NAME}: CO₂eq: {co2eq_ppm} ppm, TVOC: {tvoc_ppb} ppb");
+            if let Some(sgp30::RawSignals { h2, ethanol }) = raw {
                 debug!("{NAME}: H₂: {h2}, Ethanol: {ethanol}");
             }
-            Err(error) => warn!(%error, "{NAME}: error reading raw signals: {error}"),
         }
 
         // Skip updating metrics until calibration completes.
@@ -258,6 +271,8 @@ where
                 }
             }
         }
+
+        self.polls.add();
 
         Ok(())
     }

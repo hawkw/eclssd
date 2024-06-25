@@ -1,6 +1,6 @@
 use crate::{
     metrics::{DiameterLabel, Gauge},
-    sensor::{Sensor, SensorError},
+    sensor::{PollCount, Sensor, SensorError},
     SharedBus,
 };
 use eclss_api::SensorName;
@@ -9,6 +9,7 @@ use embedded_hal_async::i2c::I2c;
 
 pub struct Pmsa003i<I: 'static> {
     sensor: pmsa003i::Pmsa003i<&'static SharedBus<I>>,
+    polls: PollCount,
     pm2_5: &'static Gauge,
     pm1_0: &'static Gauge,
     pm10_0: &'static Gauge,
@@ -21,7 +22,10 @@ pub struct Pmsa003i<I: 'static> {
 }
 
 impl<I> Pmsa003i<I> {
-    pub fn new<const SENSORS: usize>(eclss: &'static crate::Eclss<I, { SENSORS }>) -> Self {
+    pub fn new<const SENSORS: usize>(
+        eclss: &'static crate::Eclss<I, { SENSORS }>,
+        config: &crate::Config,
+    ) -> Self {
         let metrics = &eclss.metrics;
         const fn diameter(diameter: &'static str) -> DiameterLabel {
             DiameterLabel {
@@ -30,6 +34,7 @@ impl<I> Pmsa003i<I> {
             }
         }
         Self {
+            polls: config.poll_counter(POLL_INTERVAL),
             sensor: pmsa003i::Pmsa003i::new(&eclss.i2c),
             pm2_5: metrics.pm_conc.register(diameter("2.5")).unwrap(),
             pm1_0: metrics.pm_conc.register(diameter("1.0")).unwrap(),
@@ -45,6 +50,7 @@ impl<I> Pmsa003i<I> {
 }
 
 const NAME: SensorName = SensorName::Pmsa003i;
+const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
 
 impl<I> Sensor for Pmsa003i<I>
 where
@@ -52,7 +58,7 @@ where
     I::Error: core::fmt::Display,
 {
     const NAME: SensorName = NAME;
-    const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
+    const POLL_INTERVAL: core::time::Duration = POLL_INTERVAL;
     type Error = pmsa003i::SensorError<I::Error>;
     // type InitFuture = impl Future<Output = Result<Self, Self::Error>>;
     // type PollFuture = impl Future<Output = Result<Self, Self::Error>>;
@@ -68,6 +74,12 @@ where
             sensor_version: _,
         } = self.sensor.read_async().await?;
 
+        if self.polls.should_log_info() {
+            info!(
+                "{NAME:>}: PM1.0: {:>4} µg/m³, PM2.5: {:>4} µg/m³, PM10.0: {:>4} µg/m³",
+                concentrations.pm1_0, concentrations.pm2_5, concentrations.pm10_0
+            );
+        }
         debug!("{NAME}: particulate concentrations:\n{concentrations:>#3}");
         debug!("{NAME}: particulates {counts:>#3}");
 

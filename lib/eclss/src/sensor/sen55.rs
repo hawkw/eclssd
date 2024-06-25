@@ -1,10 +1,9 @@
 use crate::{
     error::{Context, EclssError, SensorError},
     metrics::{DiameterLabel, Gauge},
-    sensor::Sensor,
+    sensor::{PollCount, Sensor},
     SharedBus,
 };
-use core::num::Wrapping;
 use core::time::Duration;
 use eclss_api::SensorName;
 
@@ -26,9 +25,8 @@ pub struct Sen55<I: 'static, D> {
     nox_index: &'static Gauge,
     voc_index: &'static Gauge,
     delay: D,
-    abs_humidity_interval: usize,
-    polls: Wrapping<usize>,
     last_warm_start_param: Option<u16>,
+    polls: PollCount,
 }
 
 impl<I, D> Sen55<I, D>
@@ -38,6 +36,7 @@ where
 {
     pub fn new<const SENSORS: usize>(
         eclss: &'static crate::Eclss<I, { SENSORS }>,
+        config: &crate::Config,
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
@@ -59,14 +58,14 @@ where
             nox_index: metrics.nox_iaq_index.register(NAME).unwrap(),
             voc_index: metrics.tvoc_iaq_index.register(NAME).unwrap(),
             delay,
-            polls: Wrapping(0),
-            abs_humidity_interval: 1,
+            polls: config.poll_counter(POLL_INTERVAL),
             last_warm_start_param: None,
         }
     }
 }
 
 const NAME: SensorName = SensorName::Sen55;
+const POLL_INTERVAL: Duration = Duration::from_secs(1);
 
 impl<I, D> Sensor for Sen55<I, D>
 where
@@ -75,12 +74,7 @@ where
     D: DelayNs,
 {
     const NAME: SensorName = NAME;
-    // The SGP30 must be polled every second in order to ensure that the dynamic
-    // baseline calibration algorithm works correctly. Performing a measurement
-    // takes 12 ms, reading the raw H2 and ETOH signals takes 25 ms, and
-    // setting the humidity compensation takes up to 10 ms, so
-    // we poll every 1000ms - 12ms - 10ms - 25ms = 953 ms.
-    const POLL_INTERVAL: Duration = Duration::from_secs(1);
+    const POLL_INTERVAL: Duration = POLL_INTERVAL;
     type Error = EclssError<Sen5xError<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
@@ -131,16 +125,24 @@ where
         let rel_humidity = measurement.relative_humidity();
         let voc_index = measurement.voc_index();
         let nox_index = measurement.nox_index();
-
-        debug!(
-            "{NAME}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, \
-            VOC Index: {voc_index:?}, NOx Index: {nox_index:?}, ready: {ready}"
-        );
         let pm1_0 = measurement.pm1_0();
         let pm2_5 = measurement.pm2_5();
         let pm4_0 = measurement.pm4_0();
         let pm10_0 = measurement.pm10_0();
-        debug!("{NAME}: PM1.0: {pm1_0:?}, PM2.5: {pm2_5:?}, PM4.0: {pm4_0:?}, PM10.0: {pm10_0:?}, ready: {ready}");
+
+        if self.polls.should_log_info() && ready {
+            if let (Some(temp), Some(rh), Some(voc), Some(nox)) =
+                (temp, rel_humidity, voc_index, nox_index)
+            {
+                info!("{NAME:>9}: Temp: {temp:>3.2}°C, Humidity: {rh:>3.2}%, VOC Index: {voc:>4.2}, NOx Index: {nox:>4.2}");
+            }
+        } else {
+            debug!(
+                "{NAME:>9}: Temp: {temp:?}°C, Humidity: {rel_humidity:?}, \
+                VOC Index: {voc_index:?}, NOx Index: {nox_index:?}, ready: {ready}"
+            );
+            debug!("{NAME:>9}: PM1.0: {pm1_0:?}, PM2.5: {pm2_5:?}, PM4.0: {pm4_0:?}, PM10.0: {pm10_0:?}, ready: {ready}");
+        }
 
         if ready {
             macro_rules! update_metrics {
@@ -165,14 +167,18 @@ where
             );
 
             if let (Some(temp), Some(humidity)) = (temp, rel_humidity) {
-                if self.polls.0 % self.abs_humidity_interval == 0 {
+                if self.polls.should_calc_abs_humidity() {
                     let abs_humidity = super::absolute_humidity(temp, humidity);
                     self.abs_humidity.set_value(abs_humidity.into());
-                    debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³",);
+                    if self.polls.should_log_info() {
+                        info!("{NAME:>9}: Absolute humidity: {abs_humidity:>3.2} g/m³",);
+                    } else {
+                        debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³",);
+                    }
                 }
-
-                self.polls += 1;
             }
+
+            self.polls.add();
         }
 
         match self.sensor.read_warm_start_parameter(&mut self.delay).await {

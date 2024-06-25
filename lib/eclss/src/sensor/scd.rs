@@ -1,9 +1,10 @@
 use crate::{
     error::SensorError,
     metrics::{Gauge, PRESSURE_METRICS},
+    sensor::PollCount,
 };
 use core::fmt;
-use core::num::Wrapping;
+use core::time::Duration;
 use eclss_api::SensorName;
 
 use embedded_hal::i2c;
@@ -32,16 +33,17 @@ struct Shared {
     rel_humidity: &'static Gauge,
     abs_humidity: &'static Gauge,
     co2_ppm: &'static Gauge,
-    abs_humidity_interval: usize,
     pressure: &'static tinymetrics::GaugeFamily<'static, PRESSURE_METRICS, SensorName>,
-    polls: Wrapping<usize>,
+    polls: PollCount,
     name: SensorName,
 }
 
 impl Shared {
     fn new<I, const SENSORS: usize>(
         eclss: &'static crate::Eclss<I, { SENSORS }>,
+        config: &crate::Config,
         name: SensorName,
+        poll_interval: Duration,
     ) -> Self {
         let metrics = &eclss.metrics;
         Self {
@@ -50,15 +52,9 @@ impl Shared {
             abs_humidity: metrics.abs_humidity_grams_m3.register(name).unwrap(),
             co2_ppm: metrics.co2_ppm.register(name).unwrap(),
             pressure: &metrics.pressure_hpa,
-            polls: Wrapping(0),
-            abs_humidity_interval: 1,
+            polls: config.poll_counter(poll_interval),
             name,
         }
-    }
-
-    fn with_abs_humidity_interval(mut self, interval: usize) -> Self {
-        self.abs_humidity_interval = interval;
-        self
     }
 
     fn pressure_pascals(&self) -> Option<u32> {
@@ -74,21 +70,36 @@ impl Shared {
     }
 
     fn record_measurement(&mut self, co2: u16, temperature: f32, humidity: f32) {
-        debug!(
-            "{}: CO₂: {co2} ppm, Temp: {temperature}°C, Humidity: {humidity}%",
-            self.name
-        );
+        if self.polls.should_log_info() {
+            info!(
+                "{:>9}: Temp: {temperature:>3.2}°C, Humidity: {humidity:>3.2}%, CO₂: {co2:>4} ppm",
+                self.name
+            );
+        } else {
+            debug!(
+                "{}: Temp: {temperature}°C, Humidity: {humidity}%, CO₂: {co2} ppm",
+                self.name
+            );
+        }
+
         self.co2_ppm.set_value(co2.into());
         self.temp_c.set_value(temperature.into());
         self.rel_humidity.set_value(humidity.into());
 
-        if self.polls.0 % self.abs_humidity_interval == 0 {
+        if self.polls.should_calc_abs_humidity() {
             let abs_humidity = super::absolute_humidity(temperature, humidity);
             self.abs_humidity.set_value(abs_humidity.into());
-            debug!("{}: Absolute humidity: {abs_humidity} g/m³", self.name);
+            if self.polls.should_log_info() {
+                info!(
+                    "{:>9}: Absolute humidity: {abs_humidity:3.2} g/m³",
+                    self.name
+                );
+            } else {
+                debug!("{}: Absolute humidity: {abs_humidity} g/m³", self.name);
+            }
         }
 
-        self.polls += 1;
+        self.polls.add();
     }
 }
 

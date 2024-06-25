@@ -1,12 +1,11 @@
 use crate::{
     error::{Context, EclssError, SensorError},
     metrics::Gauge,
-    sensor::Sensor,
+    sensor::{PollCount, Sensor},
     SharedBus,
 };
 use bosch_bme680::{AsyncBme680, BmeError, MeasurmentData as MeasurementData};
 use core::fmt;
-use core::num::Wrapping;
 use eclss_api::SensorName;
 use embedded_hal_async::{
     delay::DelayNs,
@@ -19,8 +18,7 @@ pub struct Bme680<I: 'static, D> {
     abs_humidity: &'static Gauge,
     pressure: &'static Gauge,
     gas_resistance: &'static Gauge,
-    abs_humidity_interval: usize,
-    polls: Wrapping<usize>,
+    polls: PollCount,
 }
 
 impl<I, D> Bme680<I, D>
@@ -30,6 +28,7 @@ where
 {
     pub fn new<const SENSORS: usize>(
         eclss: &'static crate::Eclss<I, { SENSORS }>,
+        config: &crate::Config,
         delay: D,
     ) -> Self {
         let metrics = &eclss.metrics;
@@ -46,14 +45,8 @@ where
             rel_humidity: metrics.rel_humidity_percent.register(NAME).unwrap(),
             abs_humidity: metrics.abs_humidity_grams_m3.register(NAME).unwrap(),
             gas_resistance: metrics.gas_resistance.register(NAME).unwrap(),
-            polls: Wrapping(0),
-            abs_humidity_interval: 1,
+            polls: config.poll_counter(POLL_INTERVAL),
         }
-    }
-
-    pub fn with_abs_humidity_interval(mut self, interval: usize) -> Self {
-        self.abs_humidity_interval = interval;
-        self
     }
 }
 
@@ -61,6 +54,7 @@ where
 pub struct Error<E: embedded_hal::i2c::ErrorType>(BmeError<E>);
 
 const NAME: SensorName = SensorName::Bme680;
+const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
 
 impl<I, D> Sensor for Bme680<I, D>
 where
@@ -69,8 +63,8 @@ where
     D: DelayNs,
 {
     const NAME: SensorName = SensorName::Bme680;
+    const POLL_INTERVAL: core::time::Duration = POLL_INTERVAL;
 
-    const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
     type Error = EclssError<Error<&'static SharedBus<I>>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {
@@ -106,7 +100,7 @@ where
             pressure,
             gas_resistance,
         } = data;
-        self.polls += 1;
+        self.polls.add();
 
         // pretty sure the `bosch-bme680` library is off by a factor of 100 when
         // representing pressures as hectopascals...
@@ -114,17 +108,27 @@ where
         self.pressure.set_value(pressure.into());
         self.temp.set_value(temperature.into());
         self.rel_humidity.set_value(humidity.into());
-        debug!("{NAME}: Temp: {temperature}°C, Humidity: {humidity}%, Pressure: {pressure} hPa");
+        if self.polls.should_log_info() {
+            info!("{NAME:>9}: Temp: {temperature:>3.2}°C, Humidity: {humidity:>3.2}%, Pressure: {pressure:>3.2} hPa");
+        } else {
+            debug!(
+                "{NAME}: Temp: {temperature}°C, Humidity: {humidity}%, Pressure: {pressure} hPa"
+            );
+        }
 
         if let Some(gas_resistance) = gas_resistance {
             self.gas_resistance.set_value(gas_resistance.into());
             debug!("{NAME}: Gas resistance: {gas_resistance} Ohms");
         }
 
-        if self.polls.0 % self.abs_humidity_interval == 0 {
+        if self.polls.should_calc_abs_humidity() {
             let abs_humidity = super::absolute_humidity(temperature, humidity);
             self.abs_humidity.set_value(abs_humidity.into());
-            debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³");
+            if self.polls.should_log_info() {
+                info!("{NAME:>9}: Absolute humidity: {abs_humidity:3.2} g/m³");
+            } else {
+                debug!("{NAME}: Absolute humidity: {abs_humidity} g/m³");
+            }
         }
 
         Ok(())

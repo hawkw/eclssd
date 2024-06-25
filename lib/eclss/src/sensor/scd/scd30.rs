@@ -22,22 +22,19 @@ where
 {
     pub fn new<const SENSORS: usize>(
         eclss: &'static crate::Eclss<I, { SENSORS }>,
+        config: &crate::Config,
         delay: D,
     ) -> Self {
         Self {
             sensor: scd30::Scd30::new(&eclss.i2c, delay.clone()),
-            state: Shared::new(eclss, NAME),
+            state: Shared::new(eclss, config, NAME, POLL_INTERVAL),
             delay,
         }
-    }
-
-    pub fn with_abs_humidity_interval(mut self, interval: usize) -> Self {
-        self.state = self.state.with_abs_humidity_interval(interval);
-        self
     }
 }
 
 const NAME: SensorName = SensorName::Scd30;
+const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
 
 impl<I, D> Sensor for Scd30<I, D>
 where
@@ -46,7 +43,7 @@ where
     D: DelayNs,
 {
     const NAME: SensorName = NAME;
-    const POLL_INTERVAL: core::time::Duration = core::time::Duration::from_secs(2);
+    const POLL_INTERVAL: core::time::Duration = POLL_INTERVAL;
     type Error = EclssError<ScdError<I::Error>>;
 
     async fn init(&mut self) -> Result<(), Self::Error> {

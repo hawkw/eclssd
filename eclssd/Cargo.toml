@@ -21,7 +21,7 @@ mdns = ["mdns-sd", "hostname", "local-ip-address"]
 [dependencies]
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
-eclss = { workspace = true, features = ["tracing", "serde"] }
+eclss = { workspace = true, features = ["clap", "tracing", "serde"] }
 eclss-app = { workspace = true, features = ["journald"] }
 eclss-axum = { workspace = true }
 eclss-api = { workspace = true, features = ["clap", "std"] }
