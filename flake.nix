@@ -120,7 +120,6 @@
           services.eclssd = {
             enable = mkEnableOption name;
 
-
             i2cdev = mkOption {
               type = path;
               default = "/dev/i2c-1";
@@ -132,6 +131,26 @@
               type = bool;
               default = false;
               description = "Whether to open firewall ports for eclssd";
+            };
+
+            sensors = {
+              type = nullOr (listOf (enum [
+                "BME680"
+                "ENS160"
+                "PMSA003I"
+                "SCD30"
+                "SCD40"
+                "SCD41"
+                "SHT41"
+                "SGP30"
+                "SEN55"
+              ]));
+              default = null;
+              description = ''
+                A list of sensors to explicitly enable, or null.
+
+                If this is null, the ECLSS daemon will attempt to use all supported sensors.
+              '';
             };
 
             # Currently this doesn't do anything but I intend to use it for my
@@ -205,6 +224,12 @@
             '';
 
             systemd.services.${name} =
+              let
+                sensorArgs =
+                  if cfg.sensors == null
+                  then ""
+                  else strings.concatMapStrings (sensor: " --sensor ${sensor}") cfg.sensors;
+              in
               {
                 inherit description;
                 wantedBy = [ "multi-user.target" ];
@@ -219,7 +244,8 @@
                   Group = name;
                   ExecStart = ''${self.packages.${pkgs.system}.default}/bin/${name} \
                     --i2cdev '${cfg.i2cdev}' \
-                    --listen-addr '${cfg.server.addr}:${toString cfg.server.port}'
+                    --listen-addr '${cfg.server.addr}:${toString cfg.server.port}'\
+                    ${sensorArgs}
                   '';
                   Restart = "on-failure";
                   RestartSec = "5s";
