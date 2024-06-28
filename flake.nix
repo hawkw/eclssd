@@ -134,7 +134,7 @@
             };
 
             sensors = {
-              type = nullOr (listOf (enum [
+              type = listOf (enum [
                 "BME680"
                 "ENS160"
                 "PMSA003I"
@@ -144,10 +144,10 @@
                 "SHT41"
                 "SGP30"
                 "SEN55"
-              ]));
-              default = null;
+              ]);
+              default = [ ];
               description = ''
-                A list of sensors to explicitly enable, or null.
+                A list of sensors to explicitly enable, or an empty list to enable all supported sensors.
 
                 If this is null, the ECLSS daemon will attempt to use all supported sensors.
               '';
@@ -225,10 +225,7 @@
 
             systemd.services.${name} =
               let
-                sensorArgs =
-                  if cfg.sensors == null
-                  then ""
-                  else strings.concatMapStrings (sensor: " --sensor ${sensor}") cfg.sensors;
+                sensorArgs = strings.concatMapStrings (sensor: " --sensor ${sensor}") (builtins.trace cfg.sensors cfg.sensors);
               in
               {
                 inherit description;
