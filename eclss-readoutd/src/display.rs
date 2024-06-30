@@ -2,7 +2,11 @@ use super::*;
 use clap::Parser;
 use embedded_graphics::geometry::Point;
 use embedded_graphics::mono_font::MonoTextStyle;
+use embedded_graphics::pixelcolor::BinaryColor;
 use std::path::PathBuf;
+
+#[cfg(feature = "ssd1680")]
+mod ssd1680_display;
 
 #[derive(Debug, Parser)]
 pub(crate) struct WindowArgs {
@@ -21,33 +25,39 @@ pub(crate) struct WindowArgs {
 
 #[derive(Debug, Parser)]
 pub(crate) struct Ssd1680Args {
-    /// SPI device path.
-    #[clap(long, short, default_value = "/dev/spidev0.0")]
-    spidev: PathBuf,
+    // /// SPI device path.
+    // #[clap(long, short, default_value = "/dev/spidev0.0")]
+    // spidev: PathBuf,
 
-    /// X dimension of the display in pixels.
-    #[clap(long, short)]
-    x: u32,
+    // /// X dimension of the display in pixels.
+    // #[clap(long, short)]
+    // x: u32,
 
-    /// Y dimension of the display in pixels.
-    #[clap(long, short)]
-    y: u32,
-
+    // /// Y dimension of the display in pixels.
+    // #[clap(long, short)]
+    // y: u32,
     /// Chip select (CS) pin.
-    #[clap(long)]
-    cs_pin: u64,
+    #[clap(long, value_enum, default_value_t = CsPin::Ce0)]
+    cs_pin: CsPin,
 
     /// RST select pin.
-    #[clap(long)]
-    rst_pin: u64,
+    #[clap(long, default_value_t = 27)]
+    rst_pin: u8,
 
     /// DC pin.
-    #[clap(long)]
-    dc_pin: u64,
+    #[clap(long, default_value_t = 25)]
+    dc_pin: u8,
 
     /// BUSY pin
-    #[clap(long)]
-    busy_pin: u64,
+    #[clap(long, default_value_t = 17)]
+    busy_pin: u8,
+}
+
+#[derive(Debug, Clone, clap::ValueEnum)]
+pub(crate) enum CsPin {
+    Ce0,
+    Ce1,
+    Ce2,
 }
 
 impl WindowArgs {
@@ -58,7 +68,6 @@ impl WindowArgs {
 
     #[cfg(feature = "window")]
     pub(crate) async fn run(self, mut client: Client) -> anyhow::Result<()> {
-        use embedded_graphics::{mono_font::MonoTextStyle, pixelcolor::BinaryColor};
         use embedded_graphics_simulator::{
             BinaryColorTheme, OutputSettingsBuilder, SimulatorDisplay, Window,
         };

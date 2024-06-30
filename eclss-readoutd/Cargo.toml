@@ -6,13 +6,14 @@ readme = "README.md"
 license = "MIT"
 
 [features]
-default = ["window", "terminal"]
+default = ["window", "terminal", "ssd1680"]
 window = [
     "dep:embedded-graphics",
     "dep:embedded-graphics-simulator",
     "dep:profont",
 ]
 terminal = ["dep:ratatui", "dep:crossterm", "futures"]
+ssd1680 = ["dep:ssd1680", "dep:embedded-graphics", "dep:rppal", "dep:profont", "dep:linux-embedded-hal"]
 
 
 [dependencies]
@@ -25,10 +26,13 @@ embedded-graphics = { workspace = true, optional = true }
 embedded-graphics-simulator = { workspace = true, optional = true, features = ["with-sdl"]}
 futures = { workspace = true, optional = true }
 humantime = { workspace = true }
+linux-embedded-hal = { workspace = true, optional = true }
 profont = { workspace = true, optional = true }
 ratatui = { workspace = true, optional = true }
 reqwest = { workspace = true, default-features = false, features = ["charset", "rustls-tls", "http2", "json"] }
+rppal = { workspace = true, optional = true, features = ["hal"] }
 serde_json = { workspace = true }
+ssd1680 = { workspace = true, optional = true }
 tokio = { workspace = true, features = ["rt", "time", "sync", "io-util", "macros"] }
 tracing = { workspace = true }
 
