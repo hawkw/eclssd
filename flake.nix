@@ -291,13 +291,13 @@
             let name = "eclss-readoutd-ssd1680"; in {
 
               # eclssd user/group. the service requires its own user in order to
-              # add the "i2c" group.
+              # add the "gpio" and "spi" groups.
               users = {
                 users.${name} = {
                   inherit description;
                   isSystemUser = true;
                   group = name;
-                  extraGroups = [ "i2c" "spi" ];
+                  extraGroups = [ "gpio" "spi" ];
                 };
                 groups.${name} = { };
               };
@@ -320,9 +320,7 @@
                   '';
                   Restart = "on-failure";
                   RestartSec = "5s";
-                  # only start if the I2C adapter is up.
-                  # ConditionPathExists = "/sys/class/i2c-adapter";
-                  # Ensure that the "API VFS" (i.e. /dev/i2c-n) is mounted for
+                  # Ensure that the "API VFS" (i.e. /dev/gpiomem) is mounted for
                   # the service.
                   MountAPIVFS = true;
                   # Ensure the system has access to real hardware devices in
@@ -332,8 +330,8 @@
                   # bind its listener.
                   PrivateNetwork = false;
                   StateDirectory = "eclss-readoutd-ssd1680";
-                  # Misc hardening --- eclssd shouldn't need any filesystem
-                  # access other than `/dev/i2c-*`.
+                  # Misc hardening --- eclssd-readoutd shouldn't need any filesystem
+                  # access other than `/dev/gpiomem` and `/dev/spidev`.
                   PrivateTmp = true;
                   ProtectSystem = "strict";
                   ProtectHome = true;
