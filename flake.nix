@@ -229,6 +229,8 @@
               SUBSYSTEM=="i2c-dev", TAG+="systemd"
             '';
 
+            environment.systemPackages = [ self.packages.${pkgs.system}.default ];
+
             systemd.services.${name} =
               let
                 sensorArgs = strings.concatMapStrings (sensor: " --sensor ${sensor}") cfg.onlySensors;
