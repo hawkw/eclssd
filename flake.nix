@@ -112,6 +112,7 @@
       nixosModules.default = { config, lib, pkgs, ... }: with lib; let
         name = "eclssd";
         cfg = config.services.${name};
+        ssd1680 = "ssd1680";
         # cfgCtl = config.programs.eclssctl;
         description = "Environmental Controls and Life Support Systems daemon";
       in
@@ -147,7 +148,7 @@
               ]);
               default = [ ];
               description = ''
-                A list of sensors to explicitly enable, or an empty list to enable all supported sensors..
+                A list of sensors to explicitly enable, or an empty list to enable all supported sensors.
 
                 If this is null, the ECLSS daemon will attempt to use all supported sensors.
               '';
@@ -204,14 +205,14 @@
             };
 
             readoutd = {
-              ssd1680 = {
+              ${ssd1680} = {
                 enable = mkEnableOption "SSD1680 display support";
               };
             };
           };
         };
 
-        config = mkIf cfg.enable (mkMerge [
+        config = let eclssPkg = self.packages.${pkgs.system}.default; in mkIf cfg.enable (mkMerge [
           {
             # eclssd user/group. the service requires its own user in order to
             # add the "i2c" group.
@@ -229,7 +230,7 @@
               SUBSYSTEM=="i2c-dev", TAG+="systemd"
             '';
 
-            environment.systemPackages = [ self.packages.${pkgs.system}.default ];
+            environment.systemPackages = [ eclssPkg ];
 
             systemd.services.${name} =
               let
@@ -247,7 +248,7 @@
                 serviceConfig = {
                   User = name;
                   Group = name;
-                  ExecStart = ''${self.packages.${pkgs.system}.default}/bin/${name} \
+                  ExecStart = ''${eclssPkg}/bin/${name} \
                     --i2cdev '${cfg.i2cdev}' \
                     --listen-addr '${cfg.server.addr}:${toString cfg.server.port}'\
                     ${sensorArgs}
@@ -287,36 +288,36 @@
               ECLSS_LOG_NO_TIMESTAMPS = "true";
             };
           })
-          (mkIf cfg.readoutd.ssd1680.enable (
-            let name = "eclss-readoutd-ssd1680"; in {
+          (mkIf cfg.readoutd.${ssd1680}.enable (
+            let readoutdName = "eclss-readoutd"; in {
 
               # eclssd user/group. the service requires its own user in order to
               # add the "gpio" and "spi" groups.
               users = {
-                users.${name} = {
+                users.${readoutdName} = {
                   inherit description;
                   isSystemUser = true;
-                  group = name;
+                  group = readoutdName;
                   extraGroups = [ "gpio" "spi" ];
                 };
-                groups.${name} = { };
+                groups.${readoutdName} = { };
               };
 
-              systemd.services.${name} = {
+              systemd.services."${readoutdName}-${ssd1680}" = {
                 inherit description;
                 wantedBy = [ "multi-user.target" ];
-                after = [ "eclssd.service" ];
+                after = [ "${name}.service" ];
                 environment = {
                   ECLSS_LOG = cfg.logging.filter;
                   ECLSS_LOG_FORMAT = cfg.logging.format;
                 };
                 serviceConfig = {
-                  User = name;
-                  Group = name;
-                  ExecStart = ''${self.packages.${pkgs.system}.default}/bin/eclss-readoutd \
+                  User = readoutdName;
+                  Group = readoutdName;
+                  ExecStart = ''${eclssPkg}/bin/${readoutdName} \
                     localhost \
                     --port ${toString cfg.server.port} \
-                    ssd1680
+                    ${ssd1680}
                   '';
                   Restart = "on-failure";
                   RestartSec = "5s";
@@ -329,7 +330,7 @@
                   # Ensure the service has access to the network so that it can
                   # bind its listener.
                   PrivateNetwork = false;
-                  StateDirectory = "eclss-readoutd-ssd1680";
+                  StateDirectory = "${readoutdName}-${ssd1680}";
                   # Misc hardening --- eclssd-readoutd shouldn't need any filesystem
                   # access other than `/dev/gpiomem` and `/dev/spidev`.
                   PrivateTmp = true;
