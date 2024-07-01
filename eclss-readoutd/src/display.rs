@@ -148,10 +148,16 @@ where
     .draw(target)
     .map_err(|e| anyhow::anyhow!("error drawing title: {e:?}"))?;
 
+    let text_style = TextStyleBuilder::new()
+        .alignment(Alignment::Left)
+        .baseline(embedded_graphics::text::Baseline::Top)
+        .line_height(LineHeight::Percent(110))
+        .build();
+
     let mut pt = Point::new(OFFSET, pt.y);
     if let Some(location) = metrics.location.as_ref() {
         pt = Text::with_text_style(
-            &format!("{STATION:<WIDTH$}: {location}\n"),
+            &format!("{STATION:<WIDTH$} {location}\n",),
             pt,
             char_style,
             text_style,
@@ -159,11 +165,7 @@ where
         .draw(target)
         .map_err(|e| anyhow::anyhow!("error drawing location: {e:?}"))?;
     }
-    let text_style = TextStyleBuilder::new()
-        .alignment(Alignment::Left)
-        .baseline(embedded_graphics::text::Baseline::Top)
-        .line_height(LineHeight::Percent(110))
-        .build();
+
     let temp = mean(&metrics.temp_c)
         .map(|temp_c| {
             let temp_f = temp_c_to_f(temp_c);
