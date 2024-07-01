@@ -19,6 +19,7 @@ ssd1680 = ["dep:ssd1680", "dep:embedded-graphics", "dep:rppal", "dep:profont", "
 [dependencies]
 anyhow = { workspace = true }
 crossterm = { workspace = true, optional = true, features = ["event-stream"] }
+chrono = { workspace = true, features = ["std", "clock"] }
 clap = { workspace = true, features = ["derive", "env"] }
 eclss-api = { workspace = true }
 eclss-app = { workspace = true }

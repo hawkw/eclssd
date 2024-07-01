@@ -13,6 +13,7 @@ axum = "0.7.5"
 bosch-bme680 = "1.0.2"
 clap = { version = "4.0" }
 crossterm = "0.27.0"
+chrono = { version = "0.4.38", default-features = false }
 eclss = { path = "lib/eclss" }
 eclss-api = { path = "lib/eclss-api" }
 eclss-app = { path = "lib/eclss-app" }

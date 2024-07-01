@@ -137,7 +137,10 @@ where
     let center = target.bounding_box().center();
 
     let pt = Text::with_text_style(
-        "ECLSS READOUT\n",
+        &format!(
+            "ECLSS READOUT - {}\n",
+            chrono::Local::now().format("%I:%M %p")
+        ),
         Point::new(center.x, OFFSET),
         char_style,
         text_style,
