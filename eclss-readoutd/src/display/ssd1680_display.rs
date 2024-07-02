@@ -45,26 +45,41 @@ impl Ssd1680Args {
             .clear_red_frame()
             .map_err(|err| anyhow::anyhow!("failed to clear SSD1680 driver: {err:?}"))?;
 
-        let mut display = graphics::Display2in13::bw();
-        display.set_rotation(graphics::DisplayRotation::Rotate270);
+        let mut display_bw = graphics::Display2in13::bw();
+        display_bw.set_rotation(graphics::DisplayRotation::Rotate270);
+        let mut display_red = graphics::Display2in13::red();
+        display_red.set_rotation(graphics::DisplayRotation::Rotate270);
         let style = MonoTextStyle::new(&profont::PROFONT_12_POINT, BinaryColor::Off);
         let mut interval = tokio::time::interval(Duration::from_secs(180));
 
+        display_bw
+            .clear(BinaryColor::On)
+            .map_err(|err| anyhow::anyhow!("failed to clear SSD1680 display: {err:?}"))?;
+
+        let mut metrics = client.fetch().await?;
+        let positions = render_labels(
+            &mut display_bw,
+            style,
+            metrics.location.as_deref().unwrap_or("<unknown>"),
+        )?;
+
+        ssd1680
+            .update_bw_frame(display_bw.buffer())
+            .map_err(|err| anyhow::anyhow!("failed to update SSD1680 B/W frame: {err:?}"))?;
         loop {
-            let metrics = client.fetch().await?;
             tracing::debug!(?metrics);
-            display
+            display_red
                 .clear(BinaryColor::On)
                 .map_err(|err| anyhow::anyhow!("failed to clear SSD1680 display: {err:?}"))?;
             tracing::trace!("cleared display");
 
-            render_embedded_graphics(&mut display, style, &metrics)?;
+            render_values(&mut display_red, style, positions, &metrics)?;
             tracing::trace!("rendered display");
 
             ssd1680
-                .update_bw_frame(display.buffer())
+                .update_red_frame(display_red.buffer())
                 .map_err(|err| anyhow::anyhow!("failed to update SSD1680 B/W frame: {err:?}"))?;
-            tracing::trace!("updated B/W display");
+            tracing::trace!("updated red display");
 
             ssd1680
                 .display_frame(&mut delay)
@@ -72,6 +87,7 @@ impl Ssd1680Args {
             tracing::trace!("displayed frame");
 
             interval.tick().await;
+            metrics = client.fetch().await?;
         }
     }
 }

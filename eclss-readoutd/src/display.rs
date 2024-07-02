@@ -3,7 +3,7 @@ use clap::Parser;
 use embedded_graphics::geometry::Point;
 use embedded_graphics::mono_font::MonoTextStyle;
 use embedded_graphics::pixelcolor::BinaryColor;
-use std::path::PathBuf;
+use embedded_graphics::text::{Alignment, LineHeight, Text, TextStyleBuilder};
 
 #[cfg(feature = "ssd1680")]
 mod ssd1680_display;
@@ -98,6 +98,17 @@ impl Ssd1680Args {
     }
 }
 
+#[derive(Copy, Clone)]
+struct ValuePositions {
+    time: Point,
+    temp: Point,
+    humidity: Point,
+    tvoc: Point,
+    co2: Point,
+}
+
+const OFFSET: i32 = 2;
+
 fn render_embedded_graphics<D>(
     target: &mut D,
     char_style: MonoTextStyle<'_, D::Color>,
@@ -107,27 +118,45 @@ where
     D: embedded_graphics::draw_target::DrawTarget,
     D::Error: core::fmt::Debug,
 {
-    use embedded_graphics::text::{Alignment, LineHeight, Text, TextStyleBuilder};
-    const OFFSET: i32 = 2;
-    const TEMP: &str = "TEMP:";
-    const HUMIDITY: &str = "HUMIDITY:";
-    const TVOC: &str = "TVOC:";
-    const CO2: &str = "CO2:";
-    const STATION: &str = "STATION:";
+    let positions = render_labels(
+        target,
+        char_style,
+        metrics.location.as_deref().unwrap_or("<unknown>"),
+    )?;
 
-    const WIDTH: usize = {
-        let labels = [STATION, TEMP, HUMIDITY, TVOC, CO2];
-        let mut max = 0;
-        let mut i = 0;
-        while i < labels.len() {
-            let len = labels[i].len();
-            if len > max {
-                max = len;
-            }
-            i += 1;
-        }
-        max
-    };
+    render_values(target, char_style, positions, metrics)?;
+
+    Ok(())
+}
+
+fn render_labels<D>(
+    target: &mut D,
+    char_style: MonoTextStyle<'_, D::Color>,
+    location: impl std::fmt::Display,
+) -> anyhow::Result<ValuePositions>
+where
+    D: embedded_graphics::draw_target::DrawTarget,
+    D::Error: core::fmt::Debug,
+{
+    const TIME: &str = "TIME:     ";
+    const TEMP: &str = "TEMP:     ";
+    const HUMI: &str = "HUMIDITY: ";
+    const CO_2: &str = "CO2:      ";
+    const TVOC: &str = "TVOC:     ";
+
+    // const WIDTH: usize = {
+    //     let labels = [TIME, TEMP, HUMIDITY, TVOC, CO2];
+    //     let mut max = 0;
+    //     let mut i = 0;
+    //     while i < labels.len() {
+    //         let len = labels[i].len();
+    //         if len > max {
+    //             max = len;
+    //         }
+    //         i += 1;
+    //     }
+    //     max
+    // };
 
     let text_style = TextStyleBuilder::new()
         .alignment(Alignment::Center)
@@ -137,10 +166,7 @@ where
     let center = target.bounding_box().center();
 
     let pt = Text::with_text_style(
-        &format!(
-            "ECLSS READOUT - {}\n",
-            chrono::Local::now().format("%I:%M %p")
-        ),
+        &format!("ECLSS READOUT - {location}\n"),
         Point::new(center.x, OFFSET),
         char_style,
         text_style,
@@ -153,52 +179,86 @@ where
         .baseline(embedded_graphics::text::Baseline::Top)
         .line_height(LineHeight::Percent(110))
         .build();
+    let line_height_px = text_style
+        .line_height
+        .to_absolute(char_style.font.character_size.height) as i32;
 
-    let mut pt = Point::new(OFFSET, pt.y);
-    if let Some(location) = metrics.location.as_ref() {
-        pt = Text::with_text_style(
-            &format!("{STATION:<WIDTH$} {location}\n",),
-            pt,
-            char_style,
-            text_style,
-        )
-        .draw(target)
-        .map_err(|e| anyhow::anyhow!("error drawing location: {e:?}"))?;
-    }
+    let mut draw_label = |label: &str, pt: Point| {
+        let label = Text::with_text_style(label, pt, char_style, text_style)
+            .draw(target)
+            .map_err(|e| anyhow::anyhow!("error drawing label {label:?}: {e:?}"))?;
+        let pt = Point::new(OFFSET, label.y + line_height_px);
+        Ok::<_, anyhow::Error>((label, pt))
+    };
 
-    let temp = mean(&metrics.temp_c)
-        .map(|temp_c| {
+    let pt = Point::new(OFFSET, pt.y);
+    let (time, pt) = draw_label(TIME, pt)?;
+    let (temp, pt) = draw_label(TEMP, pt)?;
+    let (humidity, pt) = draw_label(HUMI, pt)?;
+    let (co2, pt) = draw_label(CO_2, pt)?;
+    let (tvoc, _) = draw_label(TVOC, pt)?;
+    Ok(ValuePositions {
+        time,
+        temp,
+        humidity,
+        tvoc,
+        co2,
+    })
+}
+
+fn render_values<D>(
+    target: &mut D,
+    char_style: MonoTextStyle<'_, D::Color>,
+    positions: ValuePositions,
+    metrics: &eclss_api::Metrics,
+) -> anyhow::Result<()>
+where
+    D: embedded_graphics::draw_target::DrawTarget,
+    D::Error: core::fmt::Debug,
+{
+    let text_style = TextStyleBuilder::new()
+        .alignment(Alignment::Left)
+        .baseline(embedded_graphics::text::Baseline::Top)
+        .line_height(LineHeight::Percent(110))
+        .build();
+
+    Text::with_text_style(
+        &format!("{}", chrono::Local::now().format("%I:%M %p")),
+        positions.time,
+        char_style,
+        text_style,
+    )
+    .draw(target)
+    .map_err(|e| anyhow::anyhow!("error drawing time: {e:?}"))?;
+
+    let mut draw_value = |value: Option<String>, pt: Point| {
+        let s = value.as_deref().unwrap_or("???");
+        Text::with_text_style(s, pt, char_style, text_style)
+            .draw(target)
+            .map_err(|e| anyhow::anyhow!("error drawing value {value:?}: {e:?}"))
+    };
+
+    draw_value(
+        mean(&metrics.temp_c).map(|temp_c| {
             let temp_f = temp_c_to_f(temp_c);
-            format!("{TEMP:<WIDTH$} {temp_c:2.2} °C / {temp_f:3.2} °F\n")
-        })
-        .unwrap_or_else(|| format!("{TEMP:<WIDTH$} ??? °C / ??? °F\n"));
+            format!("{temp_c:2.2} °C / {temp_f:3.2} °F")
+        }),
+        positions.temp,
+    )?;
 
-    let pt = Text::with_text_style(&temp, pt, char_style, text_style)
-        .draw(target)
-        .map_err(|e| anyhow::anyhow!("error drawing temperature: {e:?}"))?;
+    draw_value(
+        mean(&metrics.rel_humidity_percent).map(|h| format!("{h:2.2}%")),
+        positions.humidity,
+    )?;
 
-    let rel_humidity = mean(&metrics.rel_humidity_percent)
-        .map(|h| format!("{HUMIDITY:<WIDTH$} {h:.2}%\n"))
-        .unwrap_or_else(|| format!("{HUMIDITY:<WIDTH$}: ???%\n"));
+    draw_value(
+        mean(&metrics.co2_ppm).map(|co2| format!("{co2:.2} ppm")),
+        positions.co2,
+    )?;
 
-    let pt = Text::with_text_style(&rel_humidity, pt, char_style, text_style)
-        .draw(target)
-        .map_err(|e| anyhow::anyhow!("error drawing humidity: {e:?}"))?;
-
-    let co2_ppm = mean(&metrics.co2_ppm)
-        .map(|c| format!("{CO2:<WIDTH$} {c:.2} ppm\n"))
-        .unwrap_or_else(|| format!("{CO2:<WIDTH$} ??? ppm\n"));
-
-    let pt = Text::with_text_style(&co2_ppm, pt, char_style, text_style)
-        .draw(target)
-        .map_err(|e| anyhow::anyhow!("error drawing CO2: {e:?}"))?;
-
-    let tvoc_ppb = mean(&metrics.tvoc_ppb)
-        .map(|c| format!("{TVOC:<WIDTH$} {c:.2} ppb\n"))
-        .unwrap_or_else(|| format!("{TVOC:<WIDTH$} ??? ppb\n"));
-
-    Text::with_text_style(&tvoc_ppb, pt, char_style, text_style)
-        .draw(target)
-        .map_err(|e| anyhow::anyhow!("error drawing tVOC: {e:?}"))?;
+    draw_value(
+        mean(&metrics.tvoc_ppb).map(|tvoc| format!("{tvoc:.2} ppb")),
+        positions.tvoc,
+    )?;
     Ok(())
 }
