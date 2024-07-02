@@ -49,8 +49,6 @@ impl Ssd1680Args {
         display_bw.set_rotation(graphics::DisplayRotation::Rotate270);
         let mut display_red = graphics::Display2in13::red();
         display_red.set_rotation(graphics::DisplayRotation::Rotate270);
-        let style = MonoTextStyle::new(&profont::PROFONT_12_POINT, BinaryColor::Off);
-        let mut interval = tokio::time::interval(Duration::from_secs(180));
 
         display_bw
             .clear(BinaryColor::On)
@@ -59,21 +57,23 @@ impl Ssd1680Args {
         let mut metrics = client.fetch().await?;
         let positions = render_labels(
             &mut display_bw,
-            style,
+            MonoTextStyle::new(&profont::PROFONT_12_POINT, BinaryColor::Off),
             metrics.location.as_deref().unwrap_or("<unknown>"),
         )?;
 
         ssd1680
             .update_bw_frame(display_bw.buffer())
             .map_err(|err| anyhow::anyhow!("failed to update SSD1680 B/W frame: {err:?}"))?;
+        let values_style = MonoTextStyle::new(&profont::PROFONT_12_POINT, BinaryColor::On);
+        let mut interval = tokio::time::interval(Duration::from_secs(180));
         loop {
             tracing::debug!(?metrics);
             display_red
-                .clear(BinaryColor::On)
+                .clear(BinaryColor::Off)
                 .map_err(|err| anyhow::anyhow!("failed to clear SSD1680 display: {err:?}"))?;
             tracing::trace!("cleared display");
 
-            render_values(&mut display_red, style, positions, &metrics)?;
+            render_values(&mut display_red, values_style, positions, &metrics)?;
             tracing::trace!("rendered display");
 
             ssd1680
