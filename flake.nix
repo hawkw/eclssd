@@ -62,10 +62,9 @@
             lockFile = ./Cargo.lock;
             outputHashes = {
               "linux-embedded-hal-0.4.0" = "sha256-2CxZcBMWaGP0DTiyQoDkwVFoNbEBojGySirSb2z+40U=";
-              "sensor-sen5x-0.1.0" = "sha256-91xw9GndodyWjJneUH/eRtBa1tJbUlFRDXKIDQJcLAg=";
-              "sgp30-0.4.0" = "sha256-5LRVMFMTxpgQpxrN0sMTiedL4Sw6NBRd86+ZvRP8CVk=";
-              "sht4x-0.2.0" = "sha256-LrOvkvNXFNL4EM9aAZfSDFM7zs6M54BGeixtDN5pFCo=";
-              "sensirion-i2c-0.3.0" = "sha256-HS6anAmUBBrhlP/kBSv243ArnK3ULK8+0JA8kpe6LAk=";
+              "sensor-sen5x-0.1.0" = "sha256-G54U1/tb2QWUQbUtcnYvnzGs8XPW1tZhbh5QOR8hiBg=";
+              "sgp30-0.3.2" = "sha256-e++4WnEACeuYla4kW405VThEOl36simMU9rrTMQA/I8=";
+              "sht4x-0.2.0" = "sha256-5ST2EJyFym5lbVvAJj3VIWn5z3SC783nLvJYolfgtoo=";
               "tinymetrics-0.1.0" = "sha256-zt7lqq2sYY9k+bMQOepxRamg1CGynFafbxBJDISl1U8=";
               "bosch-bme680-1.0.2" = "sha256-g06bpJP3PgFF9peraYxr3pU5jzZrA8xL/D6+kwr/Nfc=";
             };

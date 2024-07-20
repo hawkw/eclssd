@@ -46,7 +46,7 @@ ratatui = "0.26.3"
 reqwest = { version = "0.12.4", default-features = false }
 rppal = { version = "0.18" }
 sensor-sen5x = { version = "0.1.0", default-features = false }
-sgp30 = { version = "0.4.0", default-features = false }
+sgp30 = { version = "0.3.0", default-features = false }
 sht4x = { version = "0.2.0", default-features = false }
 serde = { version = "1.0", default-features = false }
 serde_json = { version = "1.0" }
@@ -61,4 +61,3 @@ linux-embedded-hal = { git = "https://github.com/rust-embedded/linux-embedded-ha
 sgp30 = { git = "https://github.com/hawkw/sgp30-rs", branch = "eliza/embedded-hal-async" }
 sht4x = { git = "https://github.com/hawkw/sht4x", branch = "eliza/embedded-hal-async" }
 sensor-sen5x = { git = "https://github.com/hawkw/sen5x-rs", branch = "main" }
-sensirion-i2c = { git = "https://github.com/sensirion/sensirion-i2c-rs", rev = "f7b9f3a81b777bc6e6b2f0acb4c1ef9c57dfa06d" }

@@ -11,10 +11,10 @@ use embedded_hal_async::{
     delay::DelayNs,
     i2c::{self, I2c},
 };
-use sensor_sen5x::{AsyncSen5x, Error as Sen5xError, ParticulateMode};
+use sensor_sen5x::{Error as Sen5xError, ParticulateMode, Sen5xAsync};
 
 pub struct Sen55<I: 'static, D> {
-    sensor: sensor_sen5x::AsyncSen5x<&'static SharedBus<I>>,
+    sensor: Sen5xAsync<&'static SharedBus<I>>,
     rel_humidity: &'static Gauge,
     abs_humidity: &'static Gauge,
     temp: &'static Gauge,
@@ -47,7 +47,7 @@ where
             }
         }
         Self {
-            sensor: AsyncSen5x::new(&eclss.i2c),
+            sensor: Sen5xAsync::new(&eclss.i2c),
             rel_humidity: metrics.rel_humidity_percent.register(NAME).unwrap(),
             abs_humidity: metrics.abs_humidity_grams_m3.register(NAME).unwrap(),
             temp: metrics.temp_c.register(NAME).unwrap(),

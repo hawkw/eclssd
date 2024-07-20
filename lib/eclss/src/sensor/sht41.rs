@@ -10,14 +10,14 @@ use embedded_hal_async::{
     delay::DelayNs,
     i2c::{self, I2c},
 };
-use sht4x::AsyncSht4x;
 pub use sht4x::Precision;
+use sht4x::Sht4xAsync;
 
 use super::PollCount;
 
 #[must_use = "sensors do nothing unless polled"]
 pub struct Sht41<I: 'static, D> {
-    sensor: AsyncSht4x<&'static SharedBus<I>, D>,
+    sensor: Sht4xAsync<&'static SharedBus<I>, D>,
     temp: &'static Gauge,
     rel_humidity: &'static Gauge,
     abs_humidity: &'static Gauge,
@@ -46,7 +46,7 @@ where
         let address = sht4x::Address::Address0x44;
 
         Self {
-            sensor: AsyncSht4x::new_with_address(&eclss.i2c, address),
+            sensor: Sht4xAsync::new_with_address(&eclss.i2c, address),
             temp: metrics.temp_c.register(NAME).unwrap(),
             rel_humidity: metrics.rel_humidity_percent.register(NAME).unwrap(),
             abs_humidity: metrics.abs_humidity_grams_m3.register(NAME).unwrap(),

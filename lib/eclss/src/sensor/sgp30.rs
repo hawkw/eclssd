@@ -13,10 +13,10 @@ use embedded_hal_async::{
     delay::DelayNs,
     i2c::{self, I2c},
 };
-use sgp30::{AsyncSgp30, Baseline};
+use sgp30::{Baseline, Sgp30Async};
 
 pub struct Sgp30<I: 'static, D, S = ()> {
-    sensor: AsyncSgp30<&'static SharedBus<I>, D>,
+    sensor: Sgp30Async<&'static SharedBus<I>, D>,
     tvoc: &'static Gauge,
     eco2: &'static Gauge,
     abs_humidity: &'static tinymetrics::GaugeFamily<'static, HUMIDITY_METRICS, SensorName>,
@@ -68,7 +68,7 @@ where
     ) -> Self {
         let metrics = &eclss.metrics;
         Self {
-            sensor: AsyncSgp30::new(&eclss.i2c, ADAFRUIT_SGP30_ADDR, delay),
+            sensor: Sgp30Async::new(&eclss.i2c, ADAFRUIT_SGP30_ADDR, delay),
             tvoc: metrics.tvoc_ppb.register(NAME).unwrap(),
             eco2: metrics.eco2_ppm.register(NAME).unwrap(),
             abs_humidity: &metrics.abs_humidity_grams_m3,

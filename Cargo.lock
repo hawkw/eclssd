@@ -2145,8 +2145,9 @@ dependencies = [
 
 [[package]]
 name = "sensirion-i2c"
-version = "0.3.0"
-source = "git+https://github.com/sensirion/sensirion-i2c-rs?rev=f7b9f3a81b777bc6e6b2f0acb4c1ef9c57dfa06d#f7b9f3a81b777bc6e6b2f0acb4c1ef9c57dfa06d"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "640a03c95c176226cf159ae2727f7fe3245546022639d61459af46d2878aec06"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
@@ -2155,7 +2156,7 @@ dependencies = [
 [[package]]
 name = "sensor-sen5x"
 version = "0.1.0"
-source = "git+https://github.com/hawkw/sen5x-rs?branch=main#560f4f0fd2a8b48062428bcb1994725a88305b6b"
+source = "git+https://github.com/hawkw/sen5x-rs?branch=main#37138f18feeb9fe43ea6ef2491ff179a5dd5767b"
 dependencies = [
  "bitflags 2.5.0",
  "embedded-hal 1.0.0",
@@ -2245,8 +2246,8 @@ dependencies = [
 
 [[package]]
 name = "sgp30"
-version = "0.4.0"
-source = "git+https://github.com/hawkw/sgp30-rs?branch=eliza/embedded-hal-async#2858f754b8ef99ed4ed210624661cf3ff51854d9"
+version = "0.3.2"
+source = "git+https://github.com/hawkw/sgp30-rs?branch=eliza/embedded-hal-async#75d75e8e1540141e874b34b4069d9e4874897b96"
 dependencies = [
  "byteorder",
  "embedded-hal 1.0.0",
@@ -2267,7 +2268,7 @@ dependencies = [
 [[package]]
 name = "sht4x"
 version = "0.2.0"
-source = "git+https://github.com/hawkw/sht4x?branch=eliza/embedded-hal-async#d5c0e803ef7f4ed60c5dd96f9bbd13a6fe49cbbd"
+source = "git+https://github.com/hawkw/sht4x?branch=eliza/embedded-hal-async#8e2519abf0d789241ba96dedff1b23725fcdab1d"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-async",
