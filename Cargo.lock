@@ -1297,11 +1297,11 @@ dependencies = [
 [[package]]
 name = "linux-embedded-hal"
 version = "0.4.0"
-source = "git+https://github.com/rust-embedded/linux-embedded-hal/#3ed5ad8cbafc8ceb95ee00264137870fc70c64f7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8d566b726e1b6810f66c6f1c769889248439c27f06a59df2881a735454cfa02"
 dependencies = [
  "cast",
  "embedded-hal 1.0.0",
- "embedded-hal-async",
  "embedded-hal-nb",
  "gpio-cdev",
  "i2cdev",
@@ -1310,7 +1310,6 @@ dependencies = [
  "serialport",
  "spidev",
  "sysfs_gpio",
- "tokio",
 ]
 
 [[package]]

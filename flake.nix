@@ -61,7 +61,6 @@
           cargoLock = {
             lockFile = ./Cargo.lock;
             outputHashes = {
-              "linux-embedded-hal-0.4.0" = "sha256-2CxZcBMWaGP0DTiyQoDkwVFoNbEBojGySirSb2z+40U=";
               "sensor-sen5x-0.1.0" = "sha256-G54U1/tb2QWUQbUtcnYvnzGs8XPW1tZhbh5QOR8hiBg=";
               "sgp30-0.3.2" = "sha256-e++4WnEACeuYla4kW405VThEOl36simMU9rrTMQA/I8=";
               "sht4x-0.2.0" = "sha256-5ST2EJyFym5lbVvAJj3VIWn5z3SC783nLvJYolfgtoo=";

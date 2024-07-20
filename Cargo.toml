@@ -57,7 +57,6 @@ ssd1680 = { version = "0.2.0" }
 
 [patch.crates-io]
 bosch-bme680 = { git = "https://github.com/hawkw/bosch-bme680", branch = "eliza/async" }
-linux-embedded-hal = { git = "https://github.com/rust-embedded/linux-embedded-hal/" }
 sgp30 = { git = "https://github.com/hawkw/sgp30-rs", branch = "eliza/embedded-hal-async" }
 sht4x = { git = "https://github.com/hawkw/sht4x", branch = "eliza/embedded-hal-async" }
 sensor-sen5x = { git = "https://github.com/hawkw/sen5x-rs", branch = "main" }
