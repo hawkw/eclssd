@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 
 [features]
-default = ["window", "terminal", "ssd1680"]
+default = ["terminal", "ssd1680"]
 window = [
     "dep:embedded-graphics",
     "dep:embedded-graphics-simulator",
