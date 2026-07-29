@@ -246,10 +246,11 @@
                 serviceConfig = {
                   User = name;
                   Group = name;
-                  ExecStart = ''${eclssPkg}/bin/${name} \
-                    --i2cdev '${cfg.i2cdev}' \
-                    --listen-addr '${cfg.server.addr}:${toString cfg.server.port}'\
-                    ${sensorArgs}
+                  ExecStart = ''
+                    ${eclssPkg}/bin/${name} \
+                      --i2cdev '${cfg.i2cdev}' \
+                      --listen-addr '${cfg.server.addr}:${toString cfg.server.port}' \
+                      ${sensorArgs}
                   '';
                   Restart = "on-failure";
                   RestartSec = "5s";
@@ -312,10 +313,11 @@
                 serviceConfig = {
                   User = readoutdName;
                   Group = readoutdName;
-                  ExecStart = ''${eclssPkg}/bin/${readoutdName} \
-                    localhost \
-                    --port ${toString cfg.server.port} \
-                    ${ssd1680}
+                  ExecStart = ''
+                    ${eclssPkg}/bin/${readoutdName} \
+                      localhost \
+                      --port ${toString cfg.server.port} \
+                      ${ssd1680}
                   '';
                   Restart = "on-failure";
                   RestartSec = "5s";
