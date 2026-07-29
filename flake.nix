@@ -90,18 +90,8 @@
       devShells = forAllSystems
         (pkgs: with pkgs; let flakePkgs = self.packages.${system}; in {
           default = with flakePkgs; mkShell {
-            buildInputs = [
-              eclssd.buildInputs
-              patchelf
-              # eclssd-cross-armv7l-linux.buildInputs
-              # eclssd-cross-aarch64-linux.buildInputs
-              # eclssd-cross-pi.buildInputs
-            ];
-            nativeBuildInputs = eclssd.nativeBuildInputs
-              # eclssd-cross-armv7l-linux.nativeBuildInputs
-              # eclssd-cross-aarch64-linux.nativeBuildInputs
-              # eclssd-cross-pi.nativeBuildInputs
-              ];
+            buildInputs = eclssd.buildInputs ++ [ patchelf ];
+            nativeBuildInputs = eclssd.nativeBuildInputs;
           };
         });
 
