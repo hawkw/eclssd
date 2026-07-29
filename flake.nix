@@ -88,7 +88,11 @@
       #### Dev shell (for `nix develop`)
       ########################################################################
       devShells = forAllSystems
-        (pkgs: with pkgs; let flakePkgs = self.packages.${system}; in {
+        (pkgs: with pkgs;
+        let
+          flakePkgs = self.packages.${pkgs.stdenv.hostPlatform.system};
+        in
+        {
           default = with flakePkgs; mkShell {
             buildInputs = eclssd.buildInputs ++ [ patchelf ];
             nativeBuildInputs = eclssd.nativeBuildInputs;
@@ -198,137 +202,141 @@
           };
         };
 
-        config = let eclssPkg = self.packages.${pkgs.system}.default; in mkIf cfg.enable (mkMerge [
-          {
-            # eclssd user/group. the service requires its own user in order to
-            # add the "i2c" group.
-            users = {
-              users.${name} = {
-                inherit description;
-                isSystemUser = true;
-                group = name;
-                extraGroups = [ "i2c" ];
-              };
-              groups.${name} = { };
-            };
-
-            services.udev.extraRules = ''
-              SUBSYSTEM=="i2c-dev", TAG+="systemd"
-            '';
-
-            environment.systemPackages = [ eclssPkg ];
-
-            systemd.services.${name} =
-              let
-                sensorArgs = strings.concatMapStrings (sensor: " --sensor ${sensor}") cfg.onlySensors;
-              in
-              {
-                inherit description;
-                wantedBy = [ "multi-user.target" ];
-                after = [ "networking.target" ];
-                environment = {
-                  ECLSS_LOG = cfg.logging.filter;
-                  ECLSS_LOG_FORMAT = cfg.logging.format;
-                  ECLSS_LOCATION = cfg.location;
-                };
-                serviceConfig = {
-                  User = name;
-                  Group = name;
-                  ExecStart = ''
-                    ${eclssPkg}/bin/${name} \
-                      --i2cdev '${cfg.i2cdev}' \
-                      --listen-addr '${cfg.server.addr}:${toString cfg.server.port}' \
-                      ${sensorArgs}
-                  '';
-                  Restart = "on-failure";
-                  RestartSec = "5s";
-                  # only start if the I2C adapter is up.
-                  # ConditionPathExists = "/sys/class/i2c-adapter";
-                  # Ensure that the "API VFS" (i.e. /dev/i2c-n) is mounted for
-                  # the service.
-                  MountAPIVFS = true;
-                  # Ensure the system has access to real hardware devices in
-                  # /dev
-                  PrivateDevices = false;
-                  # Ensure the service has access to the network so that it can
-                  # bind its listener.
-                  PrivateNetwork = false;
-                  StateDirectory = "eclssd";
-                  # Misc hardening --- eclssd shouldn't need any filesystem
-                  # access other than `/dev/i2c-*`.
-                  PrivateTmp = true;
-                  ProtectSystem = "strict";
-                  ProtectHome = true;
-                };
-              };
-          }
-          (mkIf cfg.openPorts {
-            networking.firewall.allowedTCPPorts = [ cfg.server.port ];
-          })
-          (mkIf (!cfg.logging.colors) {
-            systemd.services.${name}.environment = {
-              NOCOLOR = "true";
-            };
-          })
-          (mkIf (!cfg.logging.timestamps) {
-            systemd.services.${name}.environment = {
-              ECLSS_LOG_NO_TIMESTAMPS = "true";
-            };
-          })
-          (mkIf cfg.readoutd.${ssd1680}.enable (
-            let readoutdName = "eclss-readoutd"; in {
-
+        config =
+          let
+            eclssPkg = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          in
+          mkIf cfg.enable (mkMerge [
+            {
               # eclssd user/group. the service requires its own user in order to
-              # add the "gpio" and "spi" groups.
+              # add the "i2c" group.
               users = {
-                users.${readoutdName} = {
+                users.${name} = {
                   inherit description;
                   isSystemUser = true;
-                  group = readoutdName;
-                  extraGroups = [ "gpio" "spi" ];
+                  group = name;
+                  extraGroups = [ "i2c" ];
                 };
-                groups.${readoutdName} = { };
+                groups.${name} = { };
               };
 
-              systemd.services."${readoutdName}-${ssd1680}" = {
-                inherit description;
-                wantedBy = [ "multi-user.target" ];
-                after = [ "${name}.service" ];
-                environment = {
-                  ECLSS_LOG = cfg.logging.filter;
-                  ECLSS_LOG_FORMAT = cfg.logging.format;
+              services.udev.extraRules = ''
+                SUBSYSTEM=="i2c-dev", TAG+="systemd"
+              '';
+
+              environment.systemPackages = [ eclssPkg ];
+
+              systemd.services.${name} =
+                let
+                  sensorArgs = strings.concatMapStrings (sensor: " --sensor ${sensor}") cfg.onlySensors;
+                in
+                {
+                  inherit description;
+                  wantedBy = [ "multi-user.target" ];
+                  after = [ "networking.target" ];
+                  environment = {
+                    ECLSS_LOG = cfg.logging.filter;
+                    ECLSS_LOG_FORMAT = cfg.logging.format;
+                    ECLSS_LOCATION = cfg.location;
+                  };
+                  serviceConfig = {
+                    User = name;
+                    Group = name;
+                    ExecStart = ''
+                      ${eclssPkg}/bin/${name} \
+                        --i2cdev '${cfg.i2cdev}' \
+                        --listen-addr '${cfg.server.addr}:${toString cfg.server.port}' \
+                        ${sensorArgs}
+                    '';
+                    Restart = "on-failure";
+                    RestartSec = "5s";
+                    # only start if the I2C adapter is up.
+                    # ConditionPathExists = "/sys/class/i2c-adapter";
+                    # Ensure that the "API VFS" (i.e. /dev/i2c-n) is mounted for
+                    # the service.
+                    MountAPIVFS = true;
+                    # Ensure the system has access to real hardware devices in
+                    # /dev
+                    PrivateDevices = false;
+                    # Ensure the service has access to the network so that it can
+                    # bind its listener.
+                    PrivateNetwork = false;
+                    StateDirectory = "eclssd";
+                    # Misc hardening --- eclssd shouldn't need any filesystem
+                    # access other than `/dev/i2c-*`.
+                    PrivateTmp = true;
+                    ProtectSystem = "strict";
+                    ProtectHome = true;
+                  };
                 };
-                serviceConfig = {
-                  User = readoutdName;
-                  Group = readoutdName;
-                  ExecStart = ''
-                    ${eclssPkg}/bin/${readoutdName} \
-                      localhost \
-                      --port ${toString cfg.server.port} \
-                      ${ssd1680}
-                  '';
-                  Restart = "on-failure";
-                  RestartSec = "5s";
-                  # Ensure that the "API VFS" (i.e. /dev/gpiomem) is mounted for
-                  # the service.
-                  MountAPIVFS = true;
-                  # Ensure the system has access to real hardware devices in
-                  # /dev
-                  PrivateDevices = false;
-                  # Ensure the service has access to the network so that it can
-                  # bind its listener.
-                  PrivateNetwork = false;
-                  StateDirectory = "${readoutdName}-${ssd1680}";
-                  # Misc hardening --- eclssd-readoutd shouldn't need any filesystem
-                  # access other than `/dev/gpiomem` and `/dev/spidev`.
-                  PrivateTmp = true;
-                  ProtectSystem = "strict";
-                  ProtectHome = true;
-                };
-              };
             }
-          ))
-        ]);
+            (mkIf cfg.openPorts {
+              networking.firewall.allowedTCPPorts = [ cfg.server.port ];
+            })
+            (mkIf (!cfg.logging.colors) {
+              systemd.services.${name}.environment = {
+                NOCOLOR = "true";
+              };
+            })
+            (mkIf (!cfg.logging.timestamps) {
+              systemd.services.${name}.environment = {
+                ECLSS_LOG_NO_TIMESTAMPS = "true";
+              };
+            })
+            (mkIf cfg.readoutd.${ssd1680}.enable (
+              let readoutdName = "eclss-readoutd"; in {
+
+                # eclssd user/group. the service requires its own user in order to
+                # add the "gpio" and "spi" groups.
+                users = {
+                  users.${readoutdName} = {
+                    inherit description;
+                    isSystemUser = true;
+                    group = readoutdName;
+                    extraGroups = [ "gpio" "spi" ];
+                  };
+                  groups.${readoutdName} = { };
+                };
+
+                systemd.services."${readoutdName}-${ssd1680}" = {
+                  inherit description;
+                  wantedBy = [ "multi-user.target" ];
+                  after = [ "${name}.service" ];
+                  environment = {
+                    ECLSS_LOG = cfg.logging.filter;
+                    ECLSS_LOG_FORMAT = cfg.logging.format;
+                  };
+                  serviceConfig = {
+                    User = readoutdName;
+                    Group = readoutdName;
+                    ExecStart = ''
+                      ${eclssPkg}/bin/${readoutdName} \
+                        localhost \
+                        --port ${toString cfg.server.port} \
+                        ${ssd1680}
+                    '';
+                    Restart = "on-failure";
+                    RestartSec = "5s";
+                    # Ensure that the "API VFS" (i.e. /dev/gpiomem) is mounted for
+                    # the service.
+                    MountAPIVFS = true;
+                    # Ensure the system has access to real hardware devices in
+                    # /dev
+                    PrivateDevices = false;
+                    # Ensure the service has access to the network so that it can
+                    # bind its listener.
+                    PrivateNetwork = false;
+                    StateDirectory = "${readoutdName}-${ssd1680}";
+                    # Misc hardening --- eclssd-readoutd shouldn't need any filesystem
+                    # access other than `/dev/gpiomem` and `/dev/spidev`.
+                    PrivateTmp = true;
+                    ProtectSystem = "strict";
+                    ProtectHome = true;
+                  };
+                };
+              }
+            ))
+          ]);
       };
     };
 }
