@@ -2,13 +2,12 @@
   description = "Environmental Controls and Life Support Systems";
 
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs/nixos-23.11";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs = {
         nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
       };
     };
   };
@@ -98,12 +97,11 @@
               # eclssd-cross-aarch64-linux.buildInputs
               # eclssd-cross-pi.buildInputs
             ];
-            nativeBuildInputs = [
-              eclssd.nativeBuildInputs
+            nativeBuildInputs = eclssd.nativeBuildInputs
               # eclssd-cross-armv7l-linux.nativeBuildInputs
               # eclssd-cross-aarch64-linux.nativeBuildInputs
               # eclssd-cross-pi.nativeBuildInputs
-            ];
+              ];
           };
         });
 
